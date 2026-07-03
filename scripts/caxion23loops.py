@@ -176,6 +176,168 @@ def create_jax(JAXI, Np=1, omp=1):
             r_file='create.sh', o_file='log-create.txt')
 
 
+def run_jax_direct(JAXI, Np=None, omp=None, launcher='srun', executable='caxion3d', log_file='log-con.txt', launcher_options=None):
+    '''Run jaxions directly, without writing an intermediate shell script.
+
+    This is intended for use inside a Slurm allocation.
+    With the default launcher='srun', the executed command is:
+
+        srun -n Np -c omp caxion3d JAXI
+
+    If Np or omp are not provided, SLURM_NTASKS and SLURM_CPUS_PER_TASK are used when available.
+    '''
+    import glob
+    import shlex
+    import sys
+
+    if Np is None:
+        Np = int(os.environ.get('SLURM_NTASKS', '1'))
+    if omp is None:
+        omp = int(os.environ.get('SLURM_CPUS_PER_TASK', '1'))
+
+    os.environ['OMP_NUM_THREADS'] = str(omp)
+
+    for fname in glob.glob('out/m/axion.m.*'):
+        os.remove(fname)
+
+    if launcher_options is None:
+        launcher_args = []
+    elif isinstance(launcher_options, str):
+        launcher_args = shlex.split(launcher_options)
+    else:
+        launcher_args = [str(opt) for opt in launcher_options]
+
+    if launcher == 'srun':
+        cmd = [launcher, '-n', str(Np), '-c', str(omp)] + launcher_args
+    elif launcher == 'mpirun':
+        cmd = [launcher, '-np', str(Np)] + launcher_args
+    elif launcher is None or launcher == '':
+        cmd = []
+    else:
+        cmd = [launcher] + launcher_args
+
+    cmd += [executable] + shlex.split(JAXI)
+    print(' '.join(shlex.quote(arg) for arg in cmd))
+
+    with open(log_file, 'w') as log:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            log.write(line)
+        ret = proc.wait()
+
+    if ret != 0:
+        raise RuntimeError('Command failed with exit code %d: %s' % (ret, ' '.join(shlex.quote(arg) for arg in cmd)))
+
+
+def create_jax_direct(JAXI, Np=None, omp=None, launcher='srun', executable='caxion3d', launcher_options=None):
+    '''Create the HDF5 file skeleton directly through the selected launcher.'''
+    os.makedirs("out/m", exist_ok=True)
+    run_jax_direct(JAXI + ' --steps 0 --p3D 1 ', Np=Np, omp=omp,
+                   launcher=launcher, executable=executable,
+                   log_file='log-create.txt',
+                   launcher_options=launcher_options)
+
+
+def simu_slurm(R, msa, N, Ng=2, Np=None, omp=None, plota=False, rescale=1,
+               n_save=200, gpu=True, verb=0, options='', outdir=None, Nz=-1,
+               amr=1.0, launcher='srun', executable='caxion3d',
+               launcher_options=None):
+    '''Run the full caxion3d workflow inside a Slurm job allocation.
+
+    Unlike simu(), this function does not create create.sh or run.sh.
+    It runs the skeleton-creation step and the production step directly through srun by default,
+    then packs the output in the same style as simu().
+    '''
+    if plota:
+        print('Simulation')
+
+    if Np is None:
+        Np = int(os.environ.get('SLURM_NTASKS', '1'))
+    if omp is None:
+        omp = int(os.environ.get('SLURM_CPUS_PER_TASK', '1'))
+
+    if Nz < 1:
+        Nz_ = N
+    else:
+        Nz_ = Nz
+    N_create   = N // rescale       # rho
+    Nz_create  = Nz_ // rescale     # z
+    R_create   = R / rescale        # is along rho
+    msa_create = msa * rescale
+
+    if plota:
+        print('Creation with Nrho, Nz, R, msa =',
+              N_create, Nz_create, R_create, msa_create)
+
+    theta = thetaics(N_create, Nz_create, R_create, plota=plota, readIC=True)
+    phi   = phiics(theta, msa_create)
+
+    # Build and run ICs-only step (creates the HDF5 skeleton)
+    # in jaxions, we permute, fast axis is z, slow is rho
+    # so x,z
+    JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create,
+                                 R=R_create, Ng=1, Np=Np, gpu=False,
+                                 verb=verb, dump=1, options=options)
+    create_jax_direct(GRID + JAXI, Np=Np, omp=omp, launcher=launcher,
+                      executable=executable,
+                      launcher_options=launcher_options)
+
+    if plota:
+        print('Copy into file', N_create, R_create, msa_create)
+    # phis are created slow(rho) fast (z)
+    copyics(np.transpose(phi, (1, 0, 2)), filename='out/m/axion.00000', n=0)
+
+    if plota:
+        print('Run jaxions', N, R, msa)
+
+    dump = int(N * np.sqrt(12) / n_save)
+    if plota:
+        print('dump ', dump)
+
+    AMR = False
+    if amr < 0.5 and amr > 0.0:
+        AMR = True
+        options = options + ' --kcr %.5f' % amr
+    JAXI, GRID, _ = generic_jax(msa, Nx=Nz_, nz=N, R=R, Ng=Ng, Np=Np,
+                                 gpu=gpu, verb=verb, dump=dump,
+                                 options=options)
+    run_jax_direct(GRID + JAXI + ' --index 0 ', Np=Np, omp=omp,
+                   launcher=launcher, executable=executable,
+                   log_file='log-con.txt',
+                   launcher_options=launcher_options)
+
+    # Pack output files
+    subprocess.run('mv axion.log.* out', shell=True, capture_output=True, text=True)
+    subprocess.run('mv log-c*.txt out', shell=True, capture_output=True, text=True)
+
+    # Resolve destination directory
+    if outdir is None:
+        xtr = ''
+        if gpu:
+            xtr += 'gpu'
+        else:
+            xtr += 'cpu'
+        if AMR:
+            xtr += 'A'
+        dest = namea(N, Nz_, msa, Ng, xtr)  # e.g. data/out128-500-2
+        os.makedirs('data', exist_ok=True)  # ensure data/ exists
+    else:
+        dest = outdir                       # placed directly in cwd
+
+    # Safe move: refuse to clobber anything that isn't a simulation directory
+    if os.path.exists(dest):
+        if os.path.isdir(dest):
+            subprocess.run('rm -r %s' % dest, shell=True, capture_output=True, text=True)
+        else:
+            raise RuntimeError(
+                'Destination %s exists but is not a directory — aborting.' % dest)
+
+    subprocess.run('mv out %s' % dest, shell=True, capture_output=True, text=True)
+    if plota:
+        print('Output saved to', dest)
+
+
 # ---------------------------------------------------------------------------
 # HDF5 IC writer
 # ---------------------------------------------------------------------------
