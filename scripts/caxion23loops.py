@@ -223,14 +223,14 @@ def getR_2D(mf, sigma=30):
 
     Returns (ct, R, V, G) with ct as absolute simulation time.
     '''
-    N   = pa.gm(mf[0], 'N')
+    Nrho = pa.gm(mf[0], 'Nz')   # radial cells = length of chunk/m (was 'N', which assumes a square grid)
     msa = pa.gm(mf[0], 'msa')
     ct  = pa.gml(mf, 'ct')
-    rr  = np.arange(N)
+    rr  = np.arange(Nrho)
     R, V, G = [], [], []
     for m in mf:
-        li   = np.reshape(pa.gm(m, 'da/chunk/m/'), (N, 2))[:, 0]
-        vel2 = np.reshape(pa.gm(m, 'da/chunk/v/'), (N, 2))[:, 0] ** 2
+        li   = np.reshape(pa.gm(m, 'da/chunk/m/'), (Nrho, 2))[:, 0]
+        vel2 = np.reshape(pa.gm(m, 'da/chunk/v/'), (Nrho, 2))[:, 0] ** 2
         w  = np.exp(-li ** 2 * sigma)
         W  = np.sum(w)
         r  = np.sum(rr * w) / W
@@ -246,20 +246,20 @@ def getR_2D_interp(mf):
 
     Returns (ct, R) with ct as absolute simulation time.
     '''
-    N  = pa.gm(mf[0], 'N')
+    Nrho = pa.gm(mf[0], 'Nz')   # radial cells = length of chunk/m (was 'N', which assumes a square grid)
     ct = pa.gml(mf, 'ct')
     R  = []
     for m in mf:
-        li = np.reshape(pa.gm(m, 'da/chunk/m/'), (N, 2))[:, 0]
+        li = np.reshape(pa.gm(m, 'da/chunk/m/'), (Nrho, 2))[:, 0]
         r0 = np.nan
-        for i in range(N - 1):
+        for i in range(Nrho - 1):
             f1, f2 = li[i], li[i + 1]
             if f1 == 0:
                 r0 = float(i);  break
             elif f1 < 0 and f2 > 0:
                 r0 = i - f1 / (f2 - f1);  break
         if np.isnan(r0) and li[-1] == 0:
-            r0 = float(N - 1)
+            r0 = float(Nrho - 1)
         R.append(r0)
     return ct, np.array(R)
 
