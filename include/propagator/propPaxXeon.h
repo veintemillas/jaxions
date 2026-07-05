@@ -2,7 +2,7 @@
 #include<cmath>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
-//#include"scalar/varNQCD.h"
+#include <cmath>
 
 #include "utils/triSimd.h"
 #include "utils/parse.h"
@@ -26,15 +26,29 @@
 		#define	_PREFIX_ _mm256
 	#endif
 #endif
-/*
-#define	bSizeX	1024
-#define	bSizeY	64
-#define	bSizeZ	2
-*/
+
+
+
+template<typename T>
+inline T pax_j1_cpu(T x);
+
+template<>
+inline float pax_j1_cpu<float>(float x) {
+	return j1f(x);
+}
+
+template<>
+inline double pax_j1_cpu<double>(double x) {
+	return j1(x);
+}
+
+
+
 template<const KickDriftType KDtype>
 inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, const double dz,
 				const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
+	const double frw = ppar.frw;
 	const double ct   = ppar.ct;
 	const size_t NN   = ppar.Ng;
 	const size_t Lx   = ppar.Lx;
@@ -43,24 +57,63 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	const double *PC  = ppar.PC;
 	const double R    = ppar.R;
 	const double massA = ppar.massA;
+	const double mpsi  = massA*R;
 	const double beta = ppar.beta;
-	const double u    = 2.0*ppar.frw - 1.0;
 	const double n_qcd = -ppar.n;  // n = dlogchi/dlotT
-	const double u2   = (-ppar.n/2 + 4) * ppar.frw - 1;
-	const double KKt  =  ppar.sign*1*ct*(pow(ct+dz,u)-pow(ct,u))/(8.0*R*R*u*pow(ct+dz,u)); //change 1 -> ppar.beta after testing
-	const double KKt2 = -ppar.sign*1*ct/(96*ppar.massA*pow(R,4))*(pow(ct+dz,u2)-pow(ct,u2))/(u2*pow(ct+dz,u2));
-	LogMsg(VERB_PARANOID,"PPX ct  %e dz  %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
-	LogMsg(VERB_PARANOID,"mass %e",massA);
-	LogMsg(VERB_PARANOID,"PPX KKt %e KKt2 %e", KKt, KKt2);
-	/* integrate in time assuming powerlaw int d z/ m_A R */
-	const double grav = -ppar.massA*ppar.grav*dz;
-	const double alpho = (n_qcd/2.0 +1.0 - 1.0);
-	LogMsg(VERB_PARANOID,"PPX nqcd %e", n_qcd);
-	// const double dzp = (std::abs(alpho) < 1.e-2) ? ct*std::log(1.0 + dz/ct) : ct/alpho*(1. - pow(1.+dz/ct,-alpho));
-	const double dct_1 = dz; // ct*std::log(1.0 + dz/ct);
-	const double ood2 = ppar.sign*dct_1*ppar.ood2a/(2.0*ppar.massA*R);
-	LogMsg(VERB_PARANOID,"PPX od2 %e dct %e dcp %e n %.2f alpho %.e",ood2, dz, dct_1, ppar.n,alpho);
-	LogMsg(VERB_PARANOID,"mA grav %e",grav);LogFlush();
+	const double pm = 0.5 * (n_qcd + 2.0) * frw;
+
+	// Integral helper:
+	// returns int_ct^{ct+dz} d tau f(ct) (tau/ct)^(-q)
+	auto int_power = [](double ct, double dz, double f_now, double q) -> double {
+		const double x = dz / ct;
+
+		if (std::abs(1.0 - q) < 1.e-12)
+			return f_now * ct * std::log1p(x);
+
+		return f_now * ct *
+			(std::pow(1.0 + x, 1.0 - q) - 1.0) / (1.0 - q);
+	};
+
+	// Laplacian: int d tau / m_psi
+	const double Dlap = int_power(ct, dz, 1.0/mpsi, pm);
+
+	// Full Bessel potential prefactor:
+	// phase = - 1/2 int d tau m_psi(tau) * [J1(2x)/x - 1]
+	const double Dpot = int_power(ct, dz, 1.0/(R*R), 2.0*frw);
+	const double mcdth = ppar.sign * 0.5 * massA * R * R * R * Dpot;
+	const double Dmpsi = int_power(ct, dz, mpsi, -pm);
+	// const double mcdth = ppar.sign * 0.5 * Dmpsi;
+
+	// x = |Upsilon| / sqrt(2 m_A R^3)
+	// evaluated at beginning of substep
+	const double isqrtmcR2 = 1.0 / std::sqrt(2.0 * massA * R * R * R);
+
+	// Lap coefficient used by KIDI_LAP
+	const double ood2 = ppar.sign * Dlap * ppar.ood2a / 2.0;
+
+	// Optional old perturbative coefficients, not used by full Bessel POT
+	const double KKt  = 0.0;
+	const double KKt2 = 0.0;
+
+	// Gravity, if needed
+	const double Dgrav = Dmpsi;
+	const double grav  = -ppar.sign * ppar.grav * Dgrav;	
+
+	LogMsg(VERB_HIGH,
+	"PPX setup: ct %.16e dz %.16e sign %d Ng %zu Lx %zu Sf %zu "
+	"frw %.8f beta %.8e R %.16e massA %.16e mpsi %.16e nqcd %.8e pm %.8e",
+	ct, dz, ppar.sign, NN, Lx, Sf,
+	frw, beta, R, massA, mpsi, n_qcd, pm);
+
+	LogMsg(VERB_HIGH,
+		"PPX integrals: Dlap %.16e Dmpsi %.16e Dgrav %.16e "
+		"ood2 %.16e mcdth %.16e isqrtmcR2 %.16e grav %.16e",
+		Dlap, Dmpsi, Dgrav,
+		ood2, mcdth, isqrtmcR2, grav);
+
+	LogMsg(VERB_HIGH,
+		"PPX old coeffs: KKt %.16e KKt2 %.16e ood2a %.16e grav_flag %.8e",
+		KKt, KKt2, ppar.ood2a, ppar.grav);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -96,6 +149,13 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 #endif
+		
+const _MData_ mcdthVec     = opCode(set1_pd, mcdth);
+		const _MData_ isqrtmcR2Vec = opCode(set1_pd, isqrtmcR2);
+		const _MData_ oneVec       = opCode(set1_pd, 1.0);
+		const _MData_ twoVec       = opCode(set1_pd, 2.0);
+		const _MData_ zeroVec      = opCode(set1_pd, 0.0);
+
 		const _MData_ m6Vec  = opCode(set1_pd, -6.0);
 		const _MData_ KKtVec = opCode(set1_pd, KKt);
 		const _MData_ KKt2Vec = opCode(set1_pd, KKt2);
@@ -108,7 +168,7 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 #endif
 
 		const uint z0 = Vo/(Lx*Lx);
-		const uint zF = Vf/(Lx*Lx);
+		const uint zF = (Vf + Sf - 1)/Sf;
 		const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
 		const uint bY = (YC      + bSizeY - 1)/bSizeY;
 
@@ -117,6 +177,9 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 		  #pragma omp parallel default(shared)
 		  {
 		    _MData_ tmp, mel, vel, mPy, mMy, acu, lap;
+
+			alignas(Align) double xbuf[step];
+			alignas(Align) double pbuf[step];
 
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
@@ -235,27 +298,41 @@ else
 
 				case KIDI_POT:
 				{
-						// saturating at x = 1 version 
-						vel = opCode(load_pd, &v[idx]);
-						acu = opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel));
-						acu = opCode(add_pd, opCode(mul_pd, KKtVec, acu), opCode(mul_pd, KKt2Vec, opCode(mul_pd, acu, acu)));
-						mMy = opCode(sin_pd, acu);
-						mPy = opCode(cos_pd, acu);
-						tmp = opCode(sub_pd, opCode(mul_pd, mPy, mel), opCode(mul_pd, mMy, vel));
-						opCode(store_pd, &m[idx], tmp);
-						tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
-						opCode(store_pd, &v[idx], tmp);
+					vel = opCode(load_pd, &v[idx]);
 
-						// saturating at x = 1 version 
-						// vel = opCode(load_pd, &v[idx]);
-						// acu = opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel));
-						// acu = opCode(add_pd, opCode(mul_pd, KKtVec, acu), opCode(mul_pd, KKt2Vec, opCode(mul_pd, acu, acu)));
-						// mMy = opCode(sin_pd, acu);
-						// mPy = opCode(cos_pd, acu);
-						// tmp = opCode(sub_pd, opCode(mul_pd, mPy, mel), opCode(mimgeul_pd, mMy, vel));
-						// opCode(store_pd, &m[idx], tmp);
-						// tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
-						// opCode(store_pd, &v[idx], tmp);
+					// rho2 = re^2 + im^2
+					acu = opCode(add_pd,
+								opCode(mul_pd, vel, vel),
+								opCode(mul_pd, mel, mel));
+
+					// x = sqrt(rho2) / sqrt(mA R^3)
+					tmp = opCode(mul_pd, opCode(sqrt_pd, acu), isqrtmcR2Vec);
+
+					opCode(store_pd, xbuf, tmp);
+
+					for (int lane = 0; lane < step; lane++) {
+						const double x = xbuf[lane];
+
+						if (x > 0.0)
+							pbuf[lane] = -mcdth * (pax_j1_cpu<double>(2.0*x)/x - 1.0);
+						else
+							pbuf[lane] = 0.0;
+					}
+					acu = opCode(load_pd, pbuf);
+					
+					mMy = opCode(sin_pd, acu);
+					mPy = opCode(cos_pd, acu);
+
+					tmp = opCode(sub_pd,
+								opCode(mul_pd, mPy, mel),
+								opCode(mul_pd, mMy, vel));
+					opCode(store_pd, &m[idx], tmp);
+
+					tmp = opCode(add_pd,
+								opCode(mul_pd, mPy, vel),
+								opCode(mul_pd, mMy, mel));
+					opCode(store_pd, &v[idx], tmp);
+
 				}
 				break;
 				case KIDI_POT_GRAV:
@@ -323,6 +400,14 @@ else
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 #endif
+		const float mcdthf     = (float) mcdth;
+		const float isqrtmcR2f = (float) isqrtmcR2;
+
+		const _MData_ mcdthVec     = opCode(set1_ps, mcdthf);
+		const _MData_ isqrtmcR2Vec = opCode(set1_ps, isqrtmcR2f);
+		const _MData_ oneVec       = opCode(set1_ps, 1.f);
+		const _MData_ twoVec       = opCode(set1_ps, 2.f);
+		const _MData_ zeroVec      = opCode(set1_ps, 0.f);
 
 		const _MData_ m6Vec  = opCode(set1_ps, -6.f);
 		const _MData_ KKtVec = opCode(set1_ps, KKtf);
@@ -330,7 +415,7 @@ else
 		const _MData_ graVec = opCode(set1_ps, gravf);//i4R2);
 
 		const uint z0 = Vo/(Lx*Lx);
-		const uint zF = Vf/(Lx*Lx);
+		const uint zF = (Vf + Sf - 1)/Sf;
 		const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
 		const uint bY = (YC      + bSizeY - 1)/bSizeY;
 
@@ -339,6 +424,9 @@ else
 		  #pragma omp parallel default(shared)
 		  {
 		    _MData_ tmp, mel, vel, mPy, mMy, acu, lap;
+			
+			alignas(Align) float xbuf[step];
+			alignas(Align) float pbuf[step];
 
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
@@ -465,29 +553,41 @@ else
 
 				case KIDI_POT:
 				{
-						// cuartic
-						vel = opCode(load_ps, &v[idx]);
-						acu = opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel));
-						acu = opCode(mul_ps, KKtVec, acu);
-						mMy = opCode(sin_ps, acu);
-						mPy = opCode(cos_ps, acu);
-						tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
-						opCode(store_ps, &m[idx], tmp);
-						tmp = opCode(add_ps, opCode(mul_ps, mPy, vel), opCode(mul_ps, mMy, mel));
-						opCode(store_ps, &v[idx], tmp);
+					vel = opCode(load_ps, &v[idx]);
 
-						// We saturate the potential inspired by the J1 non-linear GP
+					// rho2 = re^2 + im^2
+					acu = opCode(add_ps,
+								opCode(mul_ps, vel, vel),
+								opCode(mul_ps, mel, mel));
 
-						// vel = opCode(load_ps, &v[idx]);
-						// acu = opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel));
-						// acu = opCode(add_ps, opCode(mul_ps, KKtVec, acu), opCode(mul_ps, KKt2Vec, opCode(mul_ps, acu, acu)));
-						// mMy = opCode(sin_ps, acu);
-						// mPy = opCode(cos_ps, acu);
-						// tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
-						// opCode(store_ps, &m[idx], tmp);
-						// tmp = opCode(add_ps, opCode(mul_ps, mPy, vel), opCode(mul_ps, mMy, mel));
-						// opCode(store_ps, &v[idx], tmp);
+					// x = sqrt(rho2) / sqrt(mA R^3)
+					tmp = opCode(mul_ps, opCode(sqrt_ps, acu), isqrtmcR2Vec);
 
+					opCode(store_ps, xbuf, tmp);
+
+					for (int lane = 0; lane < step; lane++) {
+						const float x = xbuf[lane];
+
+						if (x > 0.f)
+							pbuf[lane] = -mcdthf * (pax_j1_cpu<float>(2.f*x)/x - 1.f);
+						else
+							pbuf[lane] = 0.f;
+					}
+
+					acu = opCode(load_ps, pbuf);
+
+					mMy = opCode(sin_ps, acu);
+					mPy = opCode(cos_ps, acu);
+
+					tmp = opCode(sub_ps,
+								opCode(mul_ps, mPy, mel),
+								opCode(mul_ps, mMy, vel));
+					opCode(store_ps, &m[idx], tmp);
+
+					tmp = opCode(add_ps,
+								opCode(mul_ps, mPy, vel),
+								opCode(mul_ps, mMy, mel));
+					opCode(store_ps, &v[idx], tmp);
 				}
 				break;
 

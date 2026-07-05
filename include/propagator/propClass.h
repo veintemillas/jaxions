@@ -1172,7 +1172,7 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 
 			loadparms(&ppar, axion);
 			// ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
-			ppar.sign   = 1;
+			ppar.sign   = -1;
 
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts2(FIELD_V, COMM_WAIT);
