@@ -306,7 +306,7 @@ void propagatePaxGPU(
     else if constexpr (kidi == KIDI_POT)
     {
         double mcdth = dt*ppar.massA*ppar.R/2.0 ;
-        double isqrtmcR2 = 1.0/std::sqrt(ppar.massA*ppar.R*ppar.R*ppar.R);
+        double isqrtmcR2 = 1.0/std::sqrt(2.0 * ppar.massA*ppar.R*ppar.R*ppar.R);
         double iR2 = dt/(8.0*ppar.R*ppar.R) ;
         double R3  = dt * ppar.beta * pow(ppar.R,1.0/3.0);
 
