@@ -31,9 +31,17 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 {
 
 	const double R     = ppar.R;
-	const double ood2a = ppar.ood2a/R/R;
+	const double ood2a = ppar.ood2a;
 	const double beta  = ppar.beta;
 	const size_t Lx = ppar.Lx, Sf = Lx*Lx, Vo = ppar.Vo, Vf = ppar.Vf, Ng = ppar.Ng, Vh = Vf+Vo; // (Vf includes 1 ghost region)
+
+	const double massA = ppar.massA;
+	const double R2 = R*R;
+	const double R3 = R2*R;
+	const double *PC = ppar.PC;
+
+	const double inv2mAR3 = 1.0/(2.0*massA*R3);
+	const double potPref  = massA*massA; 
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
 	double gxC = 0., gyC = 0., gzC = 0., ntC = 0., ptC = 0.;
@@ -95,163 +103,185 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghosts
+					X[2] -= Ng;
 				}
 
-				if (X[0] == XC-step)
-					idxPx = idx - XC + step;
-				else
-					idxPx = idx + step;
-
-				if (X[0] == 0)
-					idxMx = idx + XC - step;
-				else
-					idxMx = idx - step;
-
-				if (X[1] == 0)
-				{
-					idxMy = idx + Sf - XC;
-					idxPy = idx + XC;
-					mPy  = opCode(load_pd, &m[idxPy]);
-					mPyp = opCode(load_pd, &v[idxPy]);
-#if	defined(__AVX512F__)
-					mMy  = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
-					mMyp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &v[idxMy])), mPy);
-#elif	defined(__AVX2__)       //AVX2
-					mMy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
-					mMyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
-#elif	defined(__AVX__)
-					mel = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
-					vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
-					mMy = opCode(blend_pd, mel, vel, 0b00000101);
-					mel = opCode(permute_pd, opCode(load_pd, &v[idxMy]), 0b00000101);
-					vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
-					mMyp = opCode(blend_pd, mel, vel, 0b00000101);
-#else
-					mel = opCode(load_pd, &m[idxMy]);
-					mMy = opCode(shuffle_pd, mel, mel, 0x00000001);
-					mel = opCode(load_pd, &v[idxMy]);
-					mMyp = opCode(shuffle_pd, mel, mel, 0x00000001);
-#endif
-				}
-				else
-				{
-					idxMy = idx - XC;
-					mMy  = opCode(load_pd, &m[idxMy]);
-					mMyp = opCode(load_pd, &v[idxMy]);
-
-					if (X[1] == YC-1)
-					{
-						idxPy = idx - Sf + XC;
-#if	defined(__AVX512F__)
-						mPy  = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
-						mPyp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxPy])), mMy);
-#elif	defined(__AVX2__)       //AVX2
-						mPy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
-						mPyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
-#elif	defined(__AVX__)
-						mel = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
-						vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
-						mPy = opCode(blend_pd, mel, vel, 0b00001010);
-						mel = opCode(permute_pd, opCode(load_pd, &v[idxPy]), 0b00000101);
-						vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
-						mPyp = opCode(blend_pd, mel, vel, 0b00001010);
-#else
-						vel = opCode(load_pd, &m[idxPy]);
-						mPy = opCode(shuffle_pd, vel, vel, 0b00000001);
-						vel = opCode(load_pd, &v[idxPy]);
-						mPyp = opCode(shuffle_pd, vel, vel, 0b00000001);
-#endif
-					}
-					else
-					{
-						idxPy = idx + XC;
-						mPy  = opCode(load_pd, &m[idxPy]);
-						mPyp = opCode(load_pd, &v[idxPy]);
-					}
-				}
-
-				// Tienes mMy y los puntos para mMx y mMz. Calcula todo ya!!!
-
-				idxPz = idx+Sf;
-				idxMz = idx-Sf;
 				idxP0 = idx;
 
 				mel = opCode(load_pd, &m[idxP0]);    // Carga m
 				vel = opCode(load_pd, &v[idxP0]); // Carga v
 
-				/* Gradients (without mod)
-				   both for q and p */
+				_MData_ gx = opCode(set1_pd, 0.0);
+				_MData_ gy = opCode(set1_pd, 0.0);
+				_MData_ gz = opCode(set1_pd, 0.0);
 
-				grd = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
-					mPx = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxPx]), vel);
-					mPx = opCode(add_pd, mPx, opCode(mul_pd, grd, grd));
+				for (size_t nv = 1; nv < Ng+1; nv++)
+				{
+					const _MData_ cVec = opCode(set1_pd, PC[nv-1]);
 
-				grd = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
-					mMx = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxMx]), vel);
-					mMx = opCode(add_pd, mMx, opCode(mul_pd, grd, grd));
+					// x neighbours
+					if (X[0] < nv*step)
+						idxMx = idx + XC - nv*step;
+					else
+						idxMx = idx - nv*step;
 
-				grd = opCode(sub_pd, mPy, mel);
-					mPy = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, mPyp, vel); // check!
-					mPy = opCode(add_pd, mPy, opCode(mul_pd, grd, grd));
+					if (X[0] + nv*step >= XC)
+						idxPx = idx - XC + nv*step;
+					else
+						idxPx = idx + nv*step;
 
-				grd = opCode(sub_pd, mMy, mel);
-					mMy = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, mMyp, vel); // check!
-					mMy = opCode(add_pd, mMy, opCode(mul_pd, grd, grd));
+					// y neighbours: copy same logic as propagator
+					if (X[1] < nv) {
+						idxMy = idx + Sf - nv*XC;
+						idxPy = idx + nv*XC;
 
-				grd = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
-					mPz = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxPz]), vel); // check!
-					mPz = opCode(add_pd, mPz, opCode(mul_pd, grd, grd));
+						mPy  = opCode(load_pd, &m[idxPy]);
+						mPyp = opCode(load_pd, &v[idxPy]);
 
-				grd = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
-					mMz = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxMz]), vel); // check!
-					mMz = opCode(add_pd, mMz, opCode(mul_pd, grd, grd));
+				#ifdef __AVX512F__
+						mMy  = opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
+						mMyp = opCode(permutexvar_pd, vShRg, opCode(load_pd, &v[idxMy]));
+				#elif defined(__AVX2__)
+						mMy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+						mMyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+				#elif defined(__AVX__)
+					grd  = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
+					tmp  = opCode(permute2f128_pd, grd, grd, 0b00000001);
+					mMy  = opCode(blend_pd, grd, tmp, 0b00000101);
 
-				grd = opCode(add_pd, mPx, mMx);
-				mMx = opCode(add_pd, mPy, mMy);
-				mMy = opCode(add_pd, mPz, mMz);
+					grd  = opCode(permute_pd, opCode(load_pd, &v[idxMy]), 0b00000101);
+					tmp  = opCode(permute2f128_pd, grd, grd, 0b00000001);
+					mMyp = opCode(blend_pd, grd, tmp, 0b00000101);
+				#else
+					grd  = opCode(load_pd, &m[idxMy]);
+					mMy  = opCode(shuffle_pd, grd, grd, 0x00000001);
+
+					grd  = opCode(load_pd, &v[idxMy]);
+					mMyp = opCode(shuffle_pd, grd, grd, 0x00000001);
+				#endif
+					} else {
+						idxMy = idx - nv*XC;
+						mMy  = opCode(load_pd, &m[idxMy]);
+						mMyp = opCode(load_pd, &v[idxMy]);
+
+						if (X[1] + nv >= YC) {
+							idxPy = idx + nv*XC - Sf;
+
+				#ifdef __AVX512F__
+							mPy  = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
+							mPyp = opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxPy]));
+				#elif defined(__AVX2__)
+							mPy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
+							mPyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
+				#elif defined(__AVX__)
+					grd  = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
+					tmp  = opCode(permute2f128_pd, grd, grd, 0b00000001);
+					mPy  = opCode(blend_pd, grd, tmp, 0b00001010);
+
+					grd  = opCode(permute_pd, opCode(load_pd, &v[idxPy]), 0b00000101);
+					tmp  = opCode(permute2f128_pd, grd, grd, 0b00000001);
+					mPyp = opCode(blend_pd, grd, tmp, 0b00001010);
+				#else
+					grd  = opCode(load_pd, &m[idxPy]);
+					mPy  = opCode(shuffle_pd, grd, grd, 0x00000001);
+
+					grd  = opCode(load_pd, &v[idxPy]);
+					mPyp = opCode(shuffle_pd, grd, grd, 0x00000001);
+				#endif
+						} else {
+							idxPy = idx + nv*XC;
+							mPy  = opCode(load_pd, &m[idxPy]);
+							mPyp = opCode(load_pd, &v[idxPy]);
+						}
+					}
+
+					idxPz = idx + nv*Sf;
+					idxMz = idx - nv*Sf;
+
+					// accumulate x
+					grd = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
+					tmp = opCode(mul_pd, grd, grd);
+					grd = opCode(sub_pd, opCode(load_pd, &v[idxPx]), vel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+
+					grd = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+					grd = opCode(sub_pd, opCode(load_pd, &v[idxMx]), vel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+
+					gx = opCode(add_pd, gx, opCode(mul_pd, cVec, tmp));
+
+					// accumulate y
+					grd = opCode(sub_pd, mPy, mel);
+					tmp = opCode(mul_pd, grd, grd);
+					grd = opCode(sub_pd, mPyp, vel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+
+					grd = opCode(sub_pd, mMy, mel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+					grd = opCode(sub_pd, mMyp, vel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+
+					gy = opCode(add_pd, gy, opCode(mul_pd, cVec, tmp));
+
+					// accumulate z
+					grd = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
+					tmp = opCode(mul_pd, grd, grd);
+					grd = opCode(sub_pd, opCode(load_pd, &v[idxPz]), vel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+
+					grd = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+					grd = opCode(sub_pd, opCode(load_pd, &v[idxMz]), vel);
+					tmp = opCode(add_pd, tmp, opCode(mul_pd, grd, grd));
+
+					gz = opCode(add_pd, gz, opCode(mul_pd, cVec, tmp));
+				}
+
+				opCode(store_pd, tmpGx, gx);
+				opCode(store_pd, tmpGy, gy);
+				opCode(store_pd, tmpGz, gz);
 
 				/* Kinetic energy is zero by definition */
 				/* Number density */
 
 				mPx =  opCode(add_pd, opCode(mul_pd, mel, mel),opCode(mul_pd, vel, vel));
-
+				opCode(store_pd, tmpN,  mPx);
 				/* Potential energy is beta (p^2+q^2)
 				 		For axion beta = - 1/8R^2 */
-
-				mPy = opCode(mul_pd, mPx, mPx);
-
-				opCode(store_pd, tmpGx, grd);
-				opCode(store_pd, tmpGy, mMx);
-				opCode(store_pd, tmpGz, mMy);
-				opCode(store_pd, tmpN,  mPx);
-				opCode(store_pd, tmpV,  mPy);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					ptC += tmpV[ih];
 					ntC += tmpN[ih];
 					gxC += tmpGx[ih];
 					gyC += tmpGy[ih];
 					gzC += tmpGz[ih];
+					// ptC += tmpV[ih];
+					const double rho2 = tmpN[ih];
+					const double x2   = rho2 * inv2mAR3;
+
+					double Vphys;
+					if (x2 < 1.e-8) {
+						Vphys = potPref * (-0.25*x2*x2 + (1.0/36.0)*x2*x2*x2);
+					} else {
+						const double x = std::sqrt(x2);
+						Vphys = potPref * (1.0 - j0(2.0*x) - x2);
+					}
+
+					ptC += Vphys;
 
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 						m2[iNx]    =  tmpN[ih];
-						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + tmpV[ih]*beta;
+						// m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + tmpV[ih]*beta;
+						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + Vphys;
 					}
 				}
 			}
 		}
 
-		gxC *= ood2a; gyC *= ood2a; gzC *= ood2a; ptC *= beta;
+		gxC *= ood2a; gyC *= ood2a; gzC *= ood2a; 
 
 #undef	_MData_
 #undef	step
@@ -300,7 +330,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 			float tmpGy[step] __attribute__((aligned(Align)));
 			float tmpGz[step] __attribute__((aligned(Align)));
 			float tmpN [step] __attribute__((aligned(Align)));
-			float tmpV [step] __attribute__((aligned(Align)));
+			// float tmpV [step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -316,167 +346,199 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					X[2] -= Ng;	// Removes ghosts
 				}
 
-				/* Gradient energies */
-
-				if (X[0] == XC-step)
-					idxPx = idx - XC + step;
-				else
-					idxPx = idx + step;
-
-				if (X[0] == 0)
-					idxMx = idx + XC - step;
-				else
-					idxMx = idx - step;
-
-				if (X[1] == 0)
-				{
-					idxMy = idx + Sf - XC;
-					idxPy = idx + XC;
-					mPy = opCode(load_ps, &m[idxPy]);
-					mPyp = opCode(load_ps, &v[idxPy]);
-#if	defined(__AVX512F__)
-					mMy = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
-					mPyp = opCode(permutexvar_ps, vShRg, opCode(load_ps, &v[idxMy]));;
-#elif	defined(__AVX2__)
-					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
-					mMyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
-#elif	defined(__AVX__)
-					mel  = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
-					vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
-					mMy  = opCode(blend_ps, mel, vel, 0b00010001);
-					mel  = opCode(permute_ps, opCode(load_ps, &v[idxMy]), 0b00000101);
-					vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
-					mMyp = opCode(blend_ps, mel, vel, 0b00010001);
-#else
-					mel  = opCode(load_ps, &m[idxMy]);
-					mMy  = opCode(shuffle_ps, mel, mel, 0b10010011);
-					mel  = opCode(load_ps, &v[idxMy]);
-					mMyp = opCode(shuffle_ps, mel, mel, 0b10010011);
-#endif
-				}
-				else
-				{
-					idxMy = idx - XC;
-					mMy  = opCode(load_ps, &m[idxMy]);
-					mMyp = opCode(load_ps, &v[idxMy]);
-
-					if (X[1] == YC-1)
-					{
-						idxPy = idx - Sf + XC;
-#if	defined(__AVX512F__)
-						mPy  = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
-						mPyp = opCode(permutexvar_ps, vShLf, opCode(load_ps, &v[idxPy]));
-#elif	defined(__AVX2__)
-						mPy  = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
-						mPyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
-#elif	defined(__AVX__)
-						mel  = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
-						vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
-						mPy  = opCode(blend_ps, mel, vel, 0b10001000);
-						mel  = opCode(permute_ps, opCode(load_ps, &v[idxPy]), 0b00111001);
-						vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
-						mPyp = opCode(blend_ps, mel, vel, 0b10001000);
-#else
-						vel = opCode(load_ps, &m[idxPy]);
-						mPy = opCode(shuffle_ps, vel, vel, 0b00111001);
-						vel = opCode(load_ps, &v[idxPy]);
-						mPyp = opCode(shuffle_ps, vel, vel, 0b00111001);
-#endif
-					}
-					else
-					{
-						idxPy = idx + XC;
-						mPy  = opCode(load_ps, &m[idxPy]);
-						mPyp = opCode(load_ps, &v[idxPy]);
-					}
-				}
-
-				idxPz = idx+Sf;
-				idxMz = idx-Sf;
 				idxP0 = idx;
 
 				mel = opCode(load_ps, &m[idxP0]);    // Carga m
 				vel = opCode(load_ps, &v[idxP0]); // Carga v
 
-				/* Gradients (without mod) */
-				grd = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
-					mPx = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxPx]), vel);
-					mPx = opCode(add_ps, mPx, opCode(mul_ps, grd, grd));
+				_MData_ gx = opCode(set1_ps, 0.f);
+				_MData_ gy = opCode(set1_ps, 0.f);
+				_MData_ gz = opCode(set1_ps, 0.f);
 
-				grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
-					mMx = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxMx]), vel);
-					mMx = opCode(add_ps, mMx, opCode(mul_ps, grd, grd));
+				for (size_t nv = 1; nv < Ng+1; nv++)
+				{
+					const _MData_ cVec = opCode(set1_ps, (float) ppar.PC[nv-1]);
 
-				grd = opCode(sub_ps, mPy, mel);
-					mPy = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, mPyp, vel);
-					mPy = opCode(add_ps, mPy, opCode(mul_ps, grd, grd));
+					// x neighbours
+					if (X[0] < nv*step)
+						idxMx = idx + XC - nv*step;
+					else
+						idxMx = idx - nv*step;
 
-				grd = opCode(sub_ps, mMy, mel);
-					mMy = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, mMyp, vel);
-					mMy = opCode(add_ps, mMy, opCode(mul_ps, grd, grd));
+					if (X[0] + nv*step >= XC)
+						idxPx = idx - XC + nv*step;
+					else
+						idxPx = idx + nv*step;
 
-				grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
-					mPz = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxPz]), vel);
-					mPz = opCode(add_ps, mPz, opCode(mul_ps, grd, grd));
+					// y neighbours
+					if (X[1] < nv)
+					{
+						idxMy = idx + Sf - nv*XC;
+						idxPy = idx + nv*XC;
 
-				grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
-					mMz = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxMz]), vel);
-					mMz = opCode(add_ps, mMz, opCode(mul_ps, grd, grd));
+						mPy  = opCode(load_ps, &m[idxPy]);
+						mPyp = opCode(load_ps, &v[idxPy]);
 
-					// if (idx==Vf-step || idx==Vo)
-					// {
-					// 	printf("%zu\n",idx);
-					// 	printsVar(mMz, "Mz");
-					// 	printsVar(mPz, "Pz");
-					// }
+				#ifdef __AVX512F__
+						mMy  = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
+						mMyp = opCode(permutexvar_ps, vShRg, opCode(load_ps, &v[idxMy]));
+				#elif defined(__AVX2__)
+						mMy  = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]),
+									opCode(setr_epi32, 7,0,1,2,3,4,5,6));
+						mMyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxMy]),
+									opCode(setr_epi32, 7,0,1,2,3,4,5,6));
+				#elif defined(__AVX__)
+						tmp  = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
+						grd  = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+						mMy  = opCode(blend_ps, tmp, grd, 0b00010001);
+
+						tmp  = opCode(permute_ps, opCode(load_ps, &v[idxMy]), 0b10010011);
+						grd  = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+						mMyp = opCode(blend_ps, tmp, grd, 0b00010001);
+				#else
+						tmp  = opCode(load_ps, &m[idxMy]);
+						mMy  = opCode(shuffle_ps, tmp, tmp, 0b10010011);
+
+						tmp  = opCode(load_ps, &v[idxMy]);
+						mMyp = opCode(shuffle_ps, tmp, tmp, 0b10010011);
+				#endif
+					}
+					else
+					{
+						idxMy = idx - nv*XC;
+						mMy  = opCode(load_ps, &m[idxMy]);
+						mMyp = opCode(load_ps, &v[idxMy]);
+
+						if (X[1] + nv >= YC)
+						{
+							idxPy = idx + nv*XC - Sf;
+
+				#ifdef __AVX512F__
+							mPy  = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
+							mPyp = opCode(permutexvar_ps, vShLf, opCode(load_ps, &v[idxPy]));
+				#elif defined(__AVX2__)
+							mPy  = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]),
+										opCode(setr_epi32, 1,2,3,4,5,6,7,0));
+							mPyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxPy]),
+										opCode(setr_epi32, 1,2,3,4,5,6,7,0));
+				#elif defined(__AVX__)
+							tmp  = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
+							grd  = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+							mPy  = opCode(blend_ps, tmp, grd, 0b10001000);
+
+							tmp  = opCode(permute_ps, opCode(load_ps, &v[idxPy]), 0b00111001);
+							grd  = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+							mPyp = opCode(blend_ps, tmp, grd, 0b10001000);
+				#else
+							tmp  = opCode(load_ps, &m[idxPy]);
+							mPy  = opCode(shuffle_ps, tmp, tmp, 0b00111001);
+
+							tmp  = opCode(load_ps, &v[idxPy]);
+							mPyp = opCode(shuffle_ps, tmp, tmp, 0b00111001);
+				#endif
+						}
+						else
+						{
+							idxPy = idx + nv*XC;
+							mPy  = opCode(load_ps, &m[idxPy]);
+							mPyp = opCode(load_ps, &v[idxPy]);
+						}
+					}
+
+					idxPz = idx + nv*Sf;
+					idxMz = idx - nv*Sf;
+
+					// x contribution
+					grd = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
+					tmp = opCode(mul_ps, grd, grd);
+					grd = opCode(sub_ps, opCode(load_ps, &v[idxPx]), vel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+
+					grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+					grd = opCode(sub_ps, opCode(load_ps, &v[idxMx]), vel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+
+					gx = opCode(add_ps, gx, opCode(mul_ps, cVec, tmp));
+
+					// y contribution
+					grd = opCode(sub_ps, mPy, mel);
+					tmp = opCode(mul_ps, grd, grd);
+					grd = opCode(sub_ps, mPyp, vel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+
+					grd = opCode(sub_ps, mMy, mel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+					grd = opCode(sub_ps, mMyp, vel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+
+					gy = opCode(add_ps, gy, opCode(mul_ps, cVec, tmp));
+
+					// z contribution
+					grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
+					tmp = opCode(mul_ps, grd, grd);
+					grd = opCode(sub_ps, opCode(load_ps, &v[idxPz]), vel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+
+					grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+					grd = opCode(sub_ps, opCode(load_ps, &v[idxMz]), vel);
+					tmp = opCode(add_ps, tmp, opCode(mul_ps, grd, grd));
+
+					gz = opCode(add_ps, gz, opCode(mul_ps, cVec, tmp));
+				}
 
 
-				grd = opCode(add_ps, mPx, mMx);
-				mMx = opCode(add_ps, mPy, mMy);
-				mMy = opCode(add_ps, mPz, mMz);
+				opCode(store_ps, tmpGx, gx);
+				opCode(store_ps, tmpGy, gy);
+				opCode(store_ps, tmpGz, gz);
 
 				/* Kinetic energy is zero by definition */
 				/* Number density */
 
 				mPx =  opCode(add_ps, opCode(mul_ps, mel, mel),opCode(mul_ps, vel, vel));
-
+				opCode(store_ps, tmpN,  mPx);
 				/* Potential energy is beta (p^2+q^2)
 				 		For axion beta = - 1/8R^2 */
 
-				mPy = opCode(mul_ps, mPx, mPx);
+				// mPy = opCode(mul_ps, mPx, mPx);
 
-				opCode(store_ps, tmpGx, grd);
-				opCode(store_ps, tmpGy, mMx);
-				opCode(store_ps, tmpGz, mMy);
-				opCode(store_ps, tmpN,  mPx);
-				opCode(store_ps, tmpV,  mPy);
+				// opCode(store_ps, tmpV,  mPy);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					ptC += (double) (tmpV[ih]);
+					
 					ntC += (double) (tmpN[ih]);
 					gxC += (double) (tmpGx[ih]);
 					gyC += (double) (tmpGy[ih]);
 					gzC += (double) (tmpGz[ih]);
+					// ptC += (double) (tmpV[ih]);
+					const double rho2 = (double) tmpN[ih];
+					const double x2   = rho2 * inv2mAR3;
+
+					double Vphys;
+					if (x2 < 1.e-6) {
+						Vphys = potPref * (-0.25*x2*x2 + (1.0/36.0)*x2*x2*x2);
+					} else {
+						const double x = std::sqrt(x2);
+						Vphys = potPref * (1.0 - j0(2.0*x) - x2);
+					}
+
+					ptC += Vphys;
 
 					// Saves map
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 						m2[iNx]    =  tmpN[ih];
-						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + tmpV[ih]*beta;
+						// m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + tmpV[ih]*beta;
+						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + Vphys;
 					}
 				}
 			}
 		}
 
-		gxC *= ood2a; gyC *= ood2a; gzC *= ood2a; ptC *= beta;
+		gxC *= ood2a; gyC *= ood2a; gzC *= ood2a; 
 #undef	_MData_
 #undef	step
 	}
@@ -501,6 +563,8 @@ void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 	ppar.R      = *axionField->RV();
 	ppar.massA  = axionField->AxionMass();
 	ppar.frw    = axionField->BckGnd()->Frw();
+	ppar.PC     = axionField->getCO();
+
 
 	/*energy density is computed in physical coordinates, not comoving
 	  rho_Grad = 1/2m_A |grad cpax|^2 /R^5   units: [H1fA]^2
@@ -515,7 +579,7 @@ void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 	ppar.beta   = -1.0/(16.0)/pow(ppar.R,6);
 	const FieldPrecision precision = axionField->Precision();
 
-	axionField->exchangeGhosts(FIELD_M);
+	// axionField->exchangeGhosts(FIELD_M); //done already in energy.cpp
 	axionField->exchangeGhosts(FIELD_V);
 
 	switch	(map) {
