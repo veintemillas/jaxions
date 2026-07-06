@@ -589,14 +589,16 @@ def getR_2D(mf, sigma=30):
 
     Returns (ct, R, V, G) with ct as absolute simulation time.
     '''
-    Nrho = pa.gm(mf[0], 'Nz')   # radial cells = length of chunk/m (was 'N', which assumes a square grid)
+    # Infer the radial length from chunk/m itself (len = 2*Nrho) instead of a
+    # grid attribute: works for square and Nz<N grids, and old files that only
+    # store 'N' or 'Nz'.
     msa = pa.gm(mf[0], 'msa')
     ct  = pa.gml(mf, 'ct')
-    rr  = np.arange(Nrho)
     R, V, G = [], [], []
     for m in mf:
-        li   = np.reshape(pa.gm(m, 'da/chunk/m/'), (Nrho, 2))[:, 0]
-        vel2 = np.reshape(pa.gm(m, 'da/chunk/v/'), (Nrho, 2))[:, 0] ** 2
+        li   = np.reshape(pa.gm(m, 'da/chunk/m/'), (-1, 2))[:, 0]
+        vel2 = np.reshape(pa.gm(m, 'da/chunk/v/'), (-1, 2))[:, 0] ** 2
+        rr   = np.arange(li.size)
         w  = np.exp(-li ** 2 * sigma)
         W  = np.sum(w)
         r  = np.sum(rr * w) / W
@@ -612,11 +614,11 @@ def getR_2D_interp(mf):
 
     Returns (ct, R) with ct as absolute simulation time.
     '''
-    Nrho = pa.gm(mf[0], 'Nz')   # radial cells = length of chunk/m (was 'N', which assumes a square grid)
     ct = pa.gml(mf, 'ct')
     R  = []
     for m in mf:
-        li = np.reshape(pa.gm(m, 'da/chunk/m/'), (Nrho, 2))[:, 0]
+        li = np.reshape(pa.gm(m, 'da/chunk/m/'), (-1, 2))[:, 0]  # Nrho inferred from data
+        Nrho = li.size
         r0 = np.nan
         for i in range(Nrho - 1):
             f1, f2 = li[i], li[i + 1]
