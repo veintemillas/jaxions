@@ -338,6 +338,94 @@ def simu_slurm(R, msa, N, Ng=2, Np=None, omp=None, plota=False, rescale=1,
         print('Output saved to', dest)
 
 
+def simu_slurm_streaming(R, msa, N, Ng=2, Np=None, omp=None, plota=False,
+                         rescale=1, n_save=200, gpu=True, verb=0, options='',
+                         outdir=None, Nz=-1, amr=1.0, launcher='srun',
+                         executable='caxion3d', launcher_options=None,
+                         ic_block_rho=128, calculate=True, n=0):
+    '''Run the Slurm workflow with streaming IC generation.'''
+    if plota:
+        print('Simulation',flush=True)
+
+    if Np is None:
+        Np = int(os.environ.get('SLURM_NTASKS', '1'))
+    if omp is None:
+        omp = int(os.environ.get('SLURM_CPUS_PER_TASK', '1'))
+
+    if Nz < 1:
+        Nz_ = N
+    else:
+        Nz_ = Nz
+    N_create = N // rescale
+    Nz_create = Nz_ // rescale
+    R_create = R / rescale
+    msa_create = msa * rescale
+
+    if plota:
+        print('Creation with Nrho, Nz, R, msa =',N_create, Nz_create, R_create, msa_create, flush=True)
+
+    JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create,
+                                 R=R_create, Ng=1, Np=Np, gpu=False,
+                                 verb=verb, dump=1, options=options)
+    create_jax_direct(GRID + JAXI, Np=Np, omp=omp, launcher=launcher,
+                      executable=executable,
+                      launcher_options=launcher_options)
+
+    if plota:
+        print('Streaming ICs into out/m/axion.00000',flush=True)
+    write_ics_streaming('out/m/axion.00000',
+                        nrh=N_create, nz=Nz_create,
+                        R=R_create, msa=msa_create,
+                        block_rho=ic_block_rho,
+                        plota=plota, calculate=calculate, n=n)
+
+    if plota:
+        print('Run jaxions', N, R, msa, flush=True)
+
+    dump = int(N * np.sqrt(12) / n_save)
+    if plota:
+        print('dump ', dump, flush=True)
+
+    AMR = False
+    if amr < 0.5 and amr > 0.0:
+        AMR = True
+        options = options + ' --kcr %.5f' % amr
+    JAXI, GRID, _ = generic_jax(msa, Nx=Nz_, nz=N, R=R, Ng=Ng, Np=Np,
+                                 gpu=gpu, verb=verb, dump=dump,
+                                 options=options)
+    run_jax_direct(GRID + JAXI + ' --index 0 ', Np=Np, omp=omp,
+                   launcher=launcher, executable=executable,
+                   log_file='log-con.txt',
+                   launcher_options=launcher_options)
+
+    subprocess.run('mv axion.log.* out', shell=True, capture_output=True, text=True)
+    subprocess.run('mv log-c*.txt out', shell=True, capture_output=True, text=True)
+
+    if outdir is None:
+        xtr = ''
+        if gpu:
+            xtr += 'gpu'
+        else:
+            xtr += 'cpu'
+        if AMR:
+            xtr += 'A'
+        dest = namea(N, Nz_, msa, Ng, xtr)
+        os.makedirs('data', exist_ok=True)
+    else:
+        dest = outdir
+
+    if os.path.exists(dest):
+        if os.path.isdir(dest):
+            subprocess.run('rm -r %s' % dest, shell=True, capture_output=True, text=True)
+        else:
+            raise RuntimeError(
+                'Destination %s exists but is not a directory — aborting.' % dest)
+
+    subprocess.run('mv out %s' % dest, shell=True, capture_output=True, text=True)
+    if plota:
+        print('Output saved to', dest)
+
+
 # ---------------------------------------------------------------------------
 # HDF5 IC writer
 # ---------------------------------------------------------------------------
@@ -351,6 +439,122 @@ def copyics(phi, filename='out/m/axion.00000', n=0):
     vata = f1['/v']
     vata[...] = np.reshape(phi * n, Nz * Nx * 2)
     f1.close()
+
+
+def write_ics_streaming(filename, nrh, nz, R, msa, block_rho=128,
+                        threshold=10, table_file='aux/tableszetat1t2_4.pkl',
+                        plota=False, calculate=True, n=0):
+    '''Write loop ICs to a jaxions HDF5 file in rho blocks.
+
+    This avoids keeping full theta and phi arrays in memory at the same time.
+    '''
+    z = np.arange(nz, dtype=np.float64)
+    rh_all = np.arange(nrh, dtype=np.float64)
+
+    theta0 = np.zeros(nrh)
+    theta0[rh_all <= R] = np.pi
+    R_phi, _ = findmer(theta0, ftype='theta')
+    if R_phi == 0:
+        R_phi = R
+
+    with open(table_file, 'rb') as f:
+        dica = pickle.load(f)
+
+    zeta, t1, t2 = dica['zeta'], dica['t1'], dica['t2']
+    f1 = CubicSpline(zeta, t1)
+    f2 = CubicSpline(zeta, t2)
+
+    def I1f(zzeta):
+        return (3 * np.pi / 4 * zzeta + 2 ** 1.5 * zzeta ** 3 / (1 - zzeta ** 2)) * f1(zzeta)
+
+    def I2f(zzeta):
+        return (np.pi + 2 ** 1.5 * zzeta ** 2 / (1 - zzeta ** 2)) * f2(zzeta)
+
+    def clip_zeta(zzeta):
+        return np.clip(zzeta, 0.0, 1.0 - 1e-12)
+
+    def Bz_values(rh_block, z_values):
+        Z = z_values[:, None]
+        RH = rh_block[None, :]
+        den = R ** 2 + RH ** 2 + Z ** 2
+        zzeta = clip_zeta(2 * R * RH / den)
+        return (R * RH * I1f(zzeta) - R ** 2 * I2f(zzeta)) / den ** (3 / 2)
+
+    def Bz_scalar(rho, zz):
+        den = R ** 2 + rho ** 2 + zz ** 2
+        zzeta = clip_zeta(2 * R * rho / den)
+        return (R * rho * I1f(zzeta) - R ** 2 * I2f(zzeta)) / den ** (3 / 2)
+
+    with h5py.File(filename, 'r+') as f:
+        mdata = f['/m']
+        vdata = f['/v']
+        expected = nrh * nz * 2
+
+        if mdata.size != expected:
+            raise RuntimeError('Unexpected /m size: %d, expected %d' % (mdata.size, expected))
+        if vdata.size != expected:
+            raise RuntimeError('Unexpected /v size: %d, expected %d' % (vdata.size, expected))
+
+        if plota:
+            print('start rho loop',flush=True)
+
+        total_blocks = (nrh + block_rho - 1) // block_rho
+        t_total0 = timeit.default_timer()
+
+        for block_index, r0 in enumerate(range(0, nrh, block_rho), start=1):
+            t_block0 = timeit.default_timer()
+            r1 = min(r0 + block_rho, nrh)
+            rh = np.arange(r0, r1, dtype=np.float64)
+
+            B = Bz_values(rh, z)
+            increments = 0.5 * (B[:-1, :] + B[1:, :])
+            near = ((rh[None, :] - R) ** 2 + z[1:, None] ** 2) <= threshold ** 2
+
+            if calculate:
+                jj, ii = np.nonzero(near)
+                for a, b in zip(jj, ii):
+                    j = a + 1
+                    rho = rh[b]
+                    res, err = quad(lambda zz: Bz_scalar(rho, zz),
+                                    z[j - 1], z[j])
+                    increments[a, b] = res
+
+            theta = np.empty((nz, r1 - r0), dtype=np.float64)
+            theta[0, :] = np.where(rh <= R, np.pi, 0.0)
+            theta[1:, :] = theta[0, :][None, :] + np.cumsum(increments, axis=0)
+
+            if not calculate:
+                near_cols = np.nonzero(np.any(near, axis=0))[0]
+                for b in near_cols:
+                    for j in range(1, nz):
+                        if near[j - 1, b]:
+                            theta[j, b] = np.arctan2(z[j], rh[b] - R)
+                        else:
+                            theta[j, b] = theta[j - 1, b] + increments[j - 1, b]
+
+            Z = z[:, None]
+            RH = rh[None, :]
+            rho_profile = rhof(msa * np.sqrt((RH - R_phi) ** 2 + Z ** 2))
+
+            phi = np.empty((nz, r1 - r0, 2), dtype=mdata.dtype)
+            phi[:, :, 0] = rho_profile * np.cos(theta)
+            phi[:, :, 1] = rho_profile * np.sin(theta)
+
+            start = r0 * nz * 2
+            stop = r1 * nz * 2
+            mdata[start:stop] = np.transpose(phi, (1, 0, 2)).reshape(-1)
+            if n == 0:
+                vdata[start:stop] = 0.0
+            else:
+                vdata[start:stop] = np.transpose(phi * n, (1, 0, 2)).reshape(-1)
+
+            if plota:
+                t_now = timeit.default_timer()
+                block_sec = t_now - t_block0
+                total_sec = t_now - t_total0
+                eta_sec = (total_sec / block_index) * (total_blocks - block_index)
+                print('wrote IC block %d/%d (rho %d:%d), block %.1f s, total %.1f s, eta %.1f s'
+                      % (block_index, total_blocks, r0, r1, block_sec, total_sec, eta_sec), flush=True)
 
 
 # ---------------------------------------------------------------------------
