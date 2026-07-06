@@ -1380,32 +1380,38 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 
 	void loadparms(PropParms *pipar, Scalar *axion)
 	{
-		(*pipar).lambda = axion->LambdaP();
-		(*pipar).massA2 = axion->AxionMassSq();
-		(*pipar).massA  = axion->AxionMass();
-		(*pipar).R      = *axion->RV();
-		(*pipar).Rpp    = axion->Rpp();
-		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
-		(*pipar).ct     = *axion->zV();
+		// moved to scalar class
+		axion->loadParms(pipar);
 
-		(*pipar).beta   = axion->BckGnd()->ICData().beta;
-		(*pipar).n      = axion->BckGnd()->DlogCHIlogT(*axion->zV());
+		// (*pipar).lambda = axion->LambdaP();
+		// (*pipar).massA2 = axion->AxionMassSq();
+		// (*pipar).massA  = axion->AxionMass();
+		// (*pipar).R      = *axion->RV();
+		// (*pipar).Rpp    = axion->Rpp();
+		// (*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
+		// (*pipar).ct     = *axion->zV();
 
-		(*pipar).Ng     = axion->getNg();
-		(*pipar).Lap    = axion->getLap();
-		(*pipar).Lx     = axion->NX();
-		(*pipar).Ly     = axion->NY();
-		(*pipar).Lz     = axion->NZ();
-		(*pipar).Tz     = axion->TZ();
-		(*pipar).PC     = axion->getCO();
-		(*pipar).PCp    = axion->getCOp();
-		(*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
-		(*pipar).gamma  = axion->BckGnd()->Gamma();
-		(*pipar).frw    = axion->BckGnd()->Frw();
-		(*pipar).dectime= axion->BckGnd()->DecTime();
-		(*pipar).RPQ    = axion->BckGnd()->RPQ();
-		(*pipar).nmodes = axion->NModes();
-		(*pipar).rhsoff = axion->BckGnd()->ICData().lme_no_rhs;
+		// (*pipar).beta   = axion->BckGnd()->ICData().beta;
+		// (*pipar).n      = axion->BckGnd()->DlogCHIlogT(*axion->zV());
+
+		// (*pipar).Ng     = axion->getNg();
+		// (*pipar).Lap    = axion->getLap();
+		// (*pipar).Lx     = axion->NX();
+		// (*pipar).Ly     = axion->NY();
+		// (*pipar).Lz     = axion->NZ();
+		// (*pipar).Tz     = axion->TZ();
+		// (*pipar).PC     = axion->getCO();
+		// (*pipar).PCp    = axion->getCOp();
+		// (*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
+		// (*pipar).gamma  = axion->BckGnd()->Gamma();
+		// (*pipar).frw    = axion->BckGnd()->Frw();
+		// (*pipar).dectime= axion->BckGnd()->DecTime();
+		// (*pipar).RPQ    = axion->BckGnd()->RPQ();
+		// (*pipar).nmodes = axion->NModes();
+		// (*pipar).rhsoff = axion->BckGnd()->ICData().lme_no_rhs;
+
+		// (*pipar).FAT = axion->BckGnd()->FAT();
+		// (*pipar).msa = axion->BckGnd()->MMa(); // for paxion
 
 	}
 #endif

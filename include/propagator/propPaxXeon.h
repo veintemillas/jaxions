@@ -34,7 +34,8 @@ inline T pax_j1_cpu(T x);
 
 template<>
 inline float pax_j1_cpu<float>(float x) {
-	return j1f(x);
+	// return j1f(x);
+	return static_cast<float>(j1(static_cast<double>(x)));
 }
 
 template<>
@@ -75,18 +76,31 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	};
 
 	// Laplacian: int d tau / m_psi
+	// it uses the physical mass mpsi from cosmos
 	const double Dlap = int_power(ct, dz, 1.0/mpsi, pm);
+
 
 	// Full Bessel potential prefactor:
 	// phase = - 1/2 int d tau m_psi(tau) * [J1(2x)/x - 1]
+	// If --FAT used, we make axitons FAT by changing mA in the potential term 
+	// so thas DAS's are fatter than the UV cut-off by msa
+	// it does not change the instability, only UV!!
+	// INSTABILITY kmax^2/2mpsi ~ UPsilon^2/8R^2, do not change mpsi
+	// NON-LINEAR COMPLETION
+	// kmax^2/2mpsi ~ mpsi'/2 (J1(2x)/x-1) SATURATES AT x~1
+	// mpsi' = kmax^2/mpsi = ADJUST = msa^2/(dx)^2 mpsi
+
+	double mpsi_V = ppar.FAT ? ppar.msa*ppar.msa*ppar.ood2a/mpsi : mpsi;
+	if (ppar.FAT)
+		LogMsg(VERB_NORMAL,"PPX mpsi %f mpsiV %f ",mpsi,mpsi_V);
 	const double Dpot = int_power(ct, dz, 1.0/(R*R), 2.0*frw);
-	const double mcdth = ppar.sign * 0.5 * massA * R * R * R * Dpot;
-	const double Dmpsi = int_power(ct, dz, mpsi, -pm);
+	const double mcdth = ppar.sign * 0.5 * mpsi_V * R * R * R * Dpot;
+	const double Dmpsi = int_power(ct, dz, mpsi_V, -pm);
 	// const double mcdth = ppar.sign * 0.5 * Dmpsi;
 
 	// x = |Upsilon| / sqrt(2 m_A R^3)
 	// evaluated at beginning of substep
-	const double isqrtmcR2 = 1.0 / std::sqrt(2.0 * massA * R * R * R);
+	const double isqrtmcR2 = 1.0 / std::sqrt(2.0 * mpsi_V * R * R * R);
 
 	// Lap coefficient used by KIDI_LAP
 	const double ood2 = ppar.sign * Dlap * ppar.ood2a / 2.0;

@@ -1924,6 +1924,7 @@ void Scalar::setCO(size_t N)
     }
 }
 
+
 // void	Scalar::setCO(size_t newN)
 // {
 // 	co.resize(newN); co.assign(newN, 0.);
@@ -1957,6 +1958,48 @@ void Scalar::setCO(size_t N)
 // 			break;
 // 	}
 // }
+
+void Scalar::loadParms(PropParms *pipar)
+	{
+		(*pipar).lambda = this->LambdaP();
+		(*pipar).massA2 = this->AxionMassSq();
+		(*pipar).massA  = this->AxionMass();
+		(*pipar).R      = *this->RV();
+		(*pipar).Rpp    = this->Rpp();
+		(*pipar).Rp     = this->BckGnd()->Rp(*this->zV());
+		(*pipar).ct     = *this->zV();
+
+		(*pipar).beta   = this->BckGnd()->ICData().beta;
+		(*pipar).n      = this->BckGnd()->DlogCHIlogT(*this->zV());
+
+		(*pipar).Ng     = this->getNg();
+		(*pipar).Lap    = this->getLap();
+		(*pipar).Lx     = this->NX();
+		(*pipar).Ly     = this->NY();
+		(*pipar).Lz     = this->NZ();
+		(*pipar).Tz     = this->TZ();
+		(*pipar).PC     = this->getCO();
+		(*pipar).PCp    = this->getCOp();
+		(*pipar).ood2a  = 1./(this->Delta()*this->Delta());
+		(*pipar).gamma  = this->BckGnd()->Gamma();
+		(*pipar).frw    = this->BckGnd()->Frw();
+		(*pipar).dectime= this->BckGnd()->DecTime();
+		(*pipar).RPQ    = this->BckGnd()->RPQ();
+		(*pipar).nmodes = this->NModes();
+		(*pipar).rhsoff = this->BckGnd()->ICData().lme_no_rhs;
+
+		(*pipar).FAT = this->BckGnd()->FAT();
+		(*pipar).msa = this->BckGnd()->MAa(); // for paxion
+
+	}
+
+
+
+
+
+
+
+
 
 
 /*	Follow all the functions written by Javier	*/

@@ -87,6 +87,7 @@ bool uMI      = false;
 bool uFR      = false;
 bool ufA      = false;
 bool uexCosm  = false;
+bool ufat     = false;
 bool uRPQ     = false;
 bool spectral = false;
 bool fpectral = false;
@@ -1653,7 +1654,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uMsa  = true;
 			lType = LAMBDA_Z2; //obsolete?
-      lz2e  = 2.0;
+      		lz2e  = 2.0;
 			PARSE2;
 		}
 
@@ -1874,6 +1875,13 @@ int	parseArgs (int argc, char *argv[])
 
 			PARSE1;
 		}
+
+	if (!strcmp(argv[i], "--FAT"))
+	{
+		ufat = true;
+
+		PARSE1;
+	}
 
     if (!strcmp(argv[i], "--maskenergyonly"))
 		{
@@ -2951,17 +2959,23 @@ Cosmos	createCosmos()
 		if (uFR)
 			myCosmos.SetFrw(frw);
 
-    if (uRPQ)
+    	if (uRPQ)
 			myCosmos.SetRPQ(RPQ);
 
 		if (uMI)
 			myCosmos.SetMink(mink);
 
 		if (uexCosm)
-			myCosmos.SetUeC(uexCosm);
+			myCosmos.SetUeC(true);
 
 		if (ufA)
 			myCosmos.SetFA(fA);
+
+		if (ufat)
+			myCosmos.SetFAT(true);
+
+		if (uMsa)
+			myCosmos.SetMAa(msa);
 
 	} else {
 		myCosmos.SetLambda  (LL);

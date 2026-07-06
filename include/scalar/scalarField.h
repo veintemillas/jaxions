@@ -324,6 +324,7 @@
 
 		void  setDev(DeviceType newdev) { device = newdev; }
 
+		void  loadParms(PropParms *pipar);
 
 		// Adaptive time stuff
 		double kmax;

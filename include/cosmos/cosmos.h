@@ -28,14 +28,17 @@
 		IcData	   icdatastruc;
 		double	   R_PQ;
 
-		bool	     ueCosm;
-		double	   fA;
+		bool	   	ueCosm;		
+		double	   	fA;
+
+		bool		fat;
+		double		maa;
 		tk::spline sR, sT, sRpp, schi;
 
 		public:
 
 			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), dectime(-1.0), nQcd(-1.e8), nQcdr(-1.e8), zThRes(-1.e8), zRestore(-1.e8),
-			 pot(V_NONE), frw(1.0), mink(false), ueCosm(false) {}
+			 pot(V_NONE), frw(1.0), mink(false), ueCosm(false), fat(false), maa(-1.0) {}
 
 		double&   ZThRes  ()	{ return zThRes;   }
 		double&   ZRestore()	{ return zRestore; }
@@ -53,6 +56,8 @@
 		bool&     Mink    ()	{ return mink;     }
 		bool&     UeC     ()	{ return ueCosm;   }
 		double&   RPQ     ()	{ return R_PQ;      }
+		bool&     FAT     ()	{ return fat;   }
+		double&   MAa    ()	    { return maa;      }
 
 		IcData&   ICData  ()	{ return icdatastruc;}
 
@@ -77,6 +82,8 @@
 		void     SetFA      (const double ff)	  { fA = ff;  }
 		void     SetRPQ     (const double ff)	  { R_PQ = ff;  }
 
+		void     SetFAT     (const bool bbb)	  { fat = bbb;  }
+		void     SetMAa     (const double bbb)	  { maa = bbb;  }
 
 		void     Setup();
 		double	 TopSus     (const double ct);

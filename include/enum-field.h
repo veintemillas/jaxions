@@ -1009,6 +1009,8 @@
 			double   grav;
 			size_t   nmodes;
 			bool     rhsoff;
+			bool     FAT;
+			bool     msa;
 
 		}	PropParms;
 
