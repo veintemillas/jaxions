@@ -27,21 +27,27 @@
 #endif
 
 template<const bool map>
-void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, FieldPrecision precision, void * __restrict__ eRes_)
+void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, 
+	const PropParms ppar, FieldPrecision precision, void * __restrict__ eRes_)
 {
 
 	const double R     = ppar.R;
-	const double ood2a = ppar.ood2a;
+	const double ood2a = ppar.ood2a; 	// 1/delta^2
 	const double beta  = ppar.beta;
 	const size_t Lx = ppar.Lx, Sf = Lx*Lx, Vo = ppar.Vo, Vf = ppar.Vf, Ng = ppar.Ng, Vh = Vf+Vo; // (Vf includes 1 ghost region)
 
 	const double massA = ppar.massA;
+	const double mpsi = massA * R;
 	const double R2 = R*R;
 	const double R3 = R2*R;
 	const double *PC = ppar.PC;
 
-	const double inv2mAR3 = 1.0/(2.0*massA*R3);
-	const double potPref  = massA*massA; 
+	
+	double mpsi_V = ppar.FAT ? ppar.msa*ppar.msa* ood2a / mpsi : mpsi;
+	const double lapcoeff = 0.25 * ood2a/(massA * pow(R,5));
+	
+	const double inv2mAR3 = 1.0/(2.0*mpsi_V*R2);
+	const double potPref  = mpsi_V*mpsi_V/R2; 
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
 	double gxC = 0., gyC = 0., gzC = 0., ntC = 0., ptC = 0.;
@@ -247,8 +253,6 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 
 				mPx =  opCode(add_pd, opCode(mul_pd, mel, mel),opCode(mul_pd, vel, vel));
 				opCode(store_pd, tmpN,  mPx);
-				/* Potential energy is beta (p^2+q^2)
-				 		For axion beta = - 1/8R^2 */
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -274,14 +278,13 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 						m2[iNx]    =  tmpN[ih];
-						// m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + tmpV[ih]*beta;
-						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + Vphys;
+						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*lapcoeff + Vphys;
 					}
 				}
 			}
 		}
 
-		gxC *= ood2a; gyC *= ood2a; gzC *= ood2a; 
+		gxC *= lapcoeff; gyC *= lapcoeff; gzC *= lapcoeff; 
 
 #undef	_MData_
 #undef	step
@@ -498,12 +501,6 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 
 				mPx =  opCode(add_ps, opCode(mul_ps, mel, mel),opCode(mul_ps, vel, vel));
 				opCode(store_ps, tmpN,  mPx);
-				/* Potential energy is beta (p^2+q^2)
-				 		For axion beta = - 1/8R^2 */
-
-				// mPy = opCode(mul_ps, mPx, mPx);
-
-				// opCode(store_ps, tmpV,  mPy);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -531,14 +528,13 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 						m2[iNx]    =  tmpN[ih];
-						// m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + tmpV[ih]*beta;
-						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*ood2a + Vphys;
+						m2[iNx+Vh] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*lapcoeff + Vphys;
 					}
 				}
 			}
 		}
 
-		gxC *= ood2a; gyC *= ood2a; gzC *= ood2a; 
+		gxC *= lapcoeff; gyC *= lapcoeff; gzC *= lapcoeff; 
 #undef	_MData_
 #undef	step
 	}
@@ -553,21 +549,20 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 {
 	PropParms ppar ;
-	/* Energy computed with 1 neighbours even if Ng propagation. Some non-conservation expected! */
+	
 	/* Energy densities in ADM units */
-	ppar.Ng     = axionField->getNg();
-	ppar.Lx     = axionField->Length();
+
+	/* load base parameters */ 
+	axionField->loadParms(&ppar);
+	
+	/* add these extra */ 
 	ppar.Vo     = ppar.Ng*axionField->Surf();
 	ppar.Vf     = ppar.Vo + axionField->Size();
-	ppar.ct     = *axionField->zV();
-	ppar.R      = *axionField->RV();
-	ppar.massA  = axionField->AxionMass();
-	ppar.frw    = axionField->BckGnd()->Frw();
-	ppar.PC     = axionField->getCO();
-
+	
 
 	/*energy density is computed in physical coordinates, not comoving
-	  rho_Grad = 1/2m_A |grad cpax|^2 /R^5   units: [H1fA]^2
+	  	rho_Grad = 1/2m_A |grad cpax|^2 /R^5     units: [H1fA]^2
+		potential computed with non-linear completion, at cuadratic level
 		rho_SI   = -1/16  |cpax|^4 / R^6       units: [H1fA]^2
 		the number density is computed in comoving coordinates for plotting purposes
 		this is stored in eRes[TH_KIN] and corresponds to
@@ -575,8 +570,7 @@ void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 		energy density is just
 		rho      = |cpax|^2 x mA/(R1/R^3) */
 
-	ppar.ood2a  = 0.25/ppar.massA/pow(axionField->BckGnd()->PhysSize()/axionField->Length(),2.)/pow(ppar.R,5);
-	ppar.beta   = -1.0/(16.0)/pow(ppar.R,6);
+	
 	const FieldPrecision precision = axionField->Precision();
 
 	// axionField->exchangeGhosts(FIELD_M); //done already in energy.cpp
