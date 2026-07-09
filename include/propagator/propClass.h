@@ -521,7 +521,8 @@
 
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
-		LogMsg(VERB_PARANOID,"[propPaxGPU] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+		LogMsg(VERB_HIGH,"[propPaxGPU] dt %e Ng %d ood2 %e beta %f msa %f PC %f %f %f ",
+			dz, ppar.Ng,ppar.ood2a,ppar.beta,ppar.msa,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
 
 		ppar.sign   = 1;
 		ppar.grav   = axion->BckGnd()->ICData().grav; /*TODO*/
@@ -561,6 +562,8 @@
 			axion->updateR();
 			}		
 
+			loadparms(&ppar, axion);
+			ppar.sign   = 1;	
 			propagatePaxGPU<KIDI_POT>(axion->mGpu(), axion->vGpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
 			cudaDeviceSynchronize(); 
 	#else
@@ -1141,7 +1144,8 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
-		LogMsg(VERB_PARANOID,"[propPax] Ng %d ood2 %e beta %f n %e PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.n,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+		LogMsg(VERB_HIGH,"[propPax] dt %e Ng %d ood2 %e beta %f n %e PC %f %f %f ",
+			dz, ppar.Ng,ppar.ood2a,ppar.beta,ppar.n,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
 
 		void *nada;
 		ppar.sign   = 1;
