@@ -254,9 +254,31 @@ void propagatePaxGPU(
 
 	const uint NN    = ppar.Ng;
 
+    // Integral helper:
+	// returns int_ct^{ct+dz} d tau f(ct) (tau/ct)^(-q)
+	auto int_power = [](double ct, double dz, double f_now, double q) -> double {
+		const double x = dz / ct;
+
+		if (std::abs(1.0 - q) < 1.e-12)
+			return f_now * ct * std::log1p(x);
+
+		return f_now * ct *
+			(std::pow(1.0 + x, 1.0 - q) - 1.0) / (1.0 - q);
+	};
+
     if constexpr (kidi == KIDI_LAP)
     {
-        const double itwomc = ppar.sign*dt/(2*ppar.massA*ppar.R);
+    
+        // time integrated
+        const double ct   = ppar.ct;
+        const double frw = ppar.frw;
+        const double n_qcd = -ppar.n;  // n = dlogchi/dlotT
+        const double pm = 0.5 * (n_qcd + 2.0) * frw;
+        const double mpsi  = ppar.massA*ppar.R;
+        const double Dlap = int_power(ct, dt, 1.0/mpsi, pm);
+        const double itwomc = ppar.sign * Dlap / 2.0;
+        // no time integrated
+        // const double itwomc = ppar.sign*dt/(2*ppar.massA*ppar.R);
 
         switch (precision) 
             {
@@ -305,8 +327,13 @@ void propagatePaxGPU(
     
     else if constexpr (kidi == KIDI_POT)
     {
-        double mcdth = dt*ppar.massA*ppar.R/2.0 ;
-        double isqrtmcR2 = 1.0/std::sqrt(2.0 * ppar.massA*ppar.R*ppar.R*ppar.R);
+        double mpsi   = ppar.massA*ppar.R;
+        double mpsi_V = ppar.FAT ? ppar.msa*ppar.msa*ppar.ood2a/mpsi : mpsi;
+        // if (ppar.FAT)
+		//     LogMsg(VERB_NORMAL,"PPXGPU mpsi %f mpsiV %f ",mpsi,mpsi_V);
+
+        double mcdth = ppar.sign* 0.5 * dt * mpsi_V ;
+        double isqrtmcR2 = 1.0/std::sqrt(2.0 * mpsi_V*ppar.R*ppar.R);
         double iR2 = dt/(8.0*ppar.R*ppar.R) ;
         double R3  = dt * ppar.beta * pow(ppar.R,1.0/3.0);
 
