@@ -72,12 +72,14 @@ void	thetaToPaxion	(Scalar *field)
 	{
 		case DEV_CPU:
 			t2n->runCpu ();
+			field->setField(FIELD_PAXION);
 			break;
 
 		case DEV_GPU:
 			// t2n->runGpu ();
 			field->transferCpu(FIELD_MV);
 			t2n->runCpu ();
+			field->setField(FIELD_PAXION);
 			field->transferDev(FIELD_MV);
 			break;
 
@@ -88,7 +90,7 @@ void	thetaToPaxion	(Scalar *field)
 			return;
 	}
 
-	field->setField(FIELD_PAXION);
+	
 
 
 	// munge(FOLD_ALL);
