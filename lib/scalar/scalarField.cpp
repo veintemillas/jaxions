@@ -1636,7 +1636,10 @@ double	Scalar::dct_Adaptive	   () {
 			double MADX = kmax*kmax + lamP*(2*R*R);
 			dct_l  = wDz/std::sqrt(MADX);
 
-			if (nonlinear)
+			if (nonlinear){
+#ifdef USE_GPU
+			this->transferCpu(FIELD_MV);
+#endif
 			if (precision == FIELD_SINGLE)
 			{
 				float *fieldc = static_cast<float*>(mStart());
@@ -1680,6 +1683,7 @@ double	Scalar::dct_Adaptive	   () {
 				
 				dct_nl  = wDz/std::sqrt(MADX);				
 			} else {LogError("Wrong precision!");}
+			} // end if nonlinear
 		}
 		break;
 		case FIELD_AXION:
@@ -1707,6 +1711,10 @@ double	Scalar::dct_Adaptive	   () {
 			dct_l       = wDz/MADX;
 
 			if (nonlinear)
+			{
+#ifdef USE_GPU
+			this->transferCpu(FIELD_MV);
+#endif
 			if (precision == FIELD_SINGLE)
 			{
 				float *fieldr = static_cast<float*>(mStart());
@@ -1741,7 +1749,7 @@ double	Scalar::dct_Adaptive	   () {
 				MADX    = kmax*kmax/m + g*globi;
 				dct_nl  = wDz/MADX;
 			} else {LogError("Wrong precision!");}
-
+			} //end nonlinear
 		}
 		break;
 		default:
@@ -1989,8 +1997,7 @@ void Scalar::loadParms(PropParms *pipar)
 		(*pipar).rhsoff = this->BckGnd()->ICData().lme_no_rhs;
 
 		(*pipar).FAT = this->BckGnd()->FAT();
-		(*pipar).msa = this->BckGnd()->MAa(); // for paxion
-
+		(*pipar).msa = this->BckGnd()->MAa(); // for paxion			
 	}
 
 
