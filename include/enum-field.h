@@ -1010,7 +1010,7 @@
 			size_t   nmodes;
 			bool     rhsoff;
 			bool     FAT;
-			bool     msa;
+			double   msa;
 
 		}	PropParms;
 
