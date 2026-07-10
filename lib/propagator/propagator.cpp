@@ -16,6 +16,37 @@
 
 std::unique_ptr<PropBase> prop;
 
+namespace {
+	const char *tuneFieldName(const FieldType field)
+	{
+		switch (field) {
+			case FIELD_SAXION: return "Saxion";
+			case FIELD_AXION:  return "Axion";
+			case FIELD_NAXION: return "Naxion";
+			case FIELD_PAXION: return "Paxion";
+			default:           return "Unknown";
+		}
+	}
+
+	unsigned int tuneFieldId(const FieldType field)
+	{
+		switch (field) {
+			case FIELD_SAXION: return 0;
+			case FIELD_AXION:  return 1;
+			case FIELD_NAXION: return 2;
+			case FIELD_PAXION: return 3;
+			default:           return 999;
+		}
+	}
+
+	void stopTuneProfiler(profiler::Profiler &prof)
+	{
+		prof.stop();
+		if (prop != nullptr)
+			prof.add(prop->Name(), 0., 0.);
+	}
+}
+
 template<VqcdType pot>
 class	PropLeap : public PropClass<2, PROP_FIRST, pot> {
 
@@ -380,7 +411,7 @@ LogFlush();
 	switch (field->Field()) {
 		case FIELD_SAXION:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Saxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Saxion");
@@ -390,7 +421,7 @@ LogFlush();
 
 		case FIELD_AXION:
 		if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Axion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Axion");
@@ -400,7 +431,7 @@ LogFlush();
 
 		case FIELD_AXION_MOD:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Axion Mod", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Axion Mod");
@@ -410,7 +441,7 @@ LogFlush();
 
 		case FIELD_NAXION:
 		if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d NAxion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu NAxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Naxion");
@@ -420,7 +451,7 @@ LogFlush();
 
 		case FIELD_PAXION:
 			if (pType & PROP_BASE){
-					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
+					sprintf (loli, "N %01d Ng %01zu Paxion", Nng, field->getNg());
 					prop->appendName(loli);
 				} else {
 					prop->appendName("Paxion");
@@ -544,6 +575,7 @@ void tunePropagator (Scalar *field) {
 	if ((caps = fopen("./notune", "r")) != nullptr) {
 	    fclose(caps);
 		LogMsg(VERB_NORMAL, "[tpA] No tuning requested, Initial block Size %u %u %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+		stopTuneProfiler(prof);
 		return ;
 	}
 	
@@ -567,6 +599,7 @@ void tunePropagator (Scalar *field) {
 
 	if (adaptive_coarse_points == 0){
 		LogMsg(VERB_NORMAL,"[tpA] Forcing to leave tuner");
+		stopTuneProfiler(prof);
 		return ;
 	}
 	prop->SetAdaptiveStopRelImprove(0.01);		//
@@ -591,30 +624,37 @@ void tunePropagator (Scalar *field) {
 		} else {
 			int          rMpi, rThreads;
 			size_t       rNx, rNy, rNz, Nghost, rBestTimeNs;
-			unsigned int rBx, rBy, rBz, fType, myField;
+			unsigned int rBx, rBy, rBz, fType, rPropType, rPrecision, rLowMem, rLowMemGpu;
 
 			bool         foundAny = false;
 			size_t       bestCachedTime = std::numeric_limits<size_t>::max();
 			unsigned int bestBx = 1, bestBy = 1, bestBz = 1;
 
-			if      (field->Field() == FIELD_SAXION) myField = 0;
-			else if (field->Field() == FIELD_AXION)  myField = 1;
-			else if (field->Field() == FIELD_NAXION) myField = 2;
-			else if (field->Field() == FIELD_PAXION) myField = 3;
-			else myField = 999;
+			unsigned int myField = tuneFieldId(field->Field());
+			unsigned int myPropType = (unsigned int) (pType & PROP_MASK);
+			unsigned int myPrecision = (unsigned int) field->Precision();
+			unsigned int myLowMem = field->LowMem() ? 1u : 0u;
+			unsigned int myLowMemGpu = field->LowMemGPU() ? 1u : 0u;
 
 			char mDev[8];
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 
-			while(true) {
-				int nRead = fscanf (cacheFile, "%7s %d %d %lu %lu %lu %u %u %u %u %lu %lu",
+			char line[2048];
+			while(fgets(line, sizeof(line), cacheFile) != nullptr) {
+				if (line[0] == '#')
+					continue;
+
+				int nRead = sscanf (line, "%7s %d %d %lu %lu %lu %u %u %u %u %u %u %u %u %lu %lu",
 				                    mDev,
 				                    &rMpi, &rThreads,
 				                    &rNx, &rNy, &rNz,
-				                    &fType, &rBx, &rBy, &rBz, &Nghost, &rBestTimeNs);
+				                    &fType, &rPropType, &rPrecision, &rLowMem, &rLowMemGpu,
+				                    &rBx, &rBy, &rBz, &Nghost, &rBestTimeNs);
 
-				if (nRead == EOF || nRead < 12)
-					break;
+				if (nRead != 16) {
+					LogMsg(VERB_HIGH, "[tpA] Skipping legacy or malformed tune cache line: %s", line);
+					continue;
+				}
 
 				std::string fDev(mDev);
 
@@ -624,18 +664,21 @@ void tunePropagator (Scalar *field) {
 				    rNy == field->NY() &&
 				    rNz == field->NZ() &&
 				    fType == myField &&
+				    rPropType == myPropType &&
+				    rPrecision == myPrecision &&
+				    rLowMem == myLowMem &&
+				    rLowMemGpu == myLowMemGpu &&
 				    fDev == tDev &&
 				    Nghost == field->getNg())
 				{
-					if ((field->Device() == DEV_CPU ) ||
-					    (field->Device() == DEV_GPU &&
-					     (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ())))
+					if (prop->IsValidBlock(rBx, rBy, rBz))
 					{
 						LogMsg(VERB_HIGH,
-							"Tune cache match: dev=%s mpi=%d threads=%d lattice=%lu %lu %lu field=%u "
+							"Tune cache match: dev=%s mpi=%d threads=%d lattice=%lu %lu %lu field=%u prop=%u precision=%u lowmem=%u lowmemgpu=%u "
 							"block=%u x %u x %u Ng=%lu time=%lu ns",
 							fDev.c_str(), rMpi, rThreads,
 							rNx, rNy, rNz, fType,
+							rPropType, rPrecision, rLowMem, rLowMemGpu,
 							rBx, rBy, rBz, Nghost, rBestTimeNs);
 							
 						if (!foundAny || rBestTimeNs < bestCachedTime) {
@@ -692,11 +735,11 @@ void tunePropagator (Scalar *field) {
 		LogMsg (VERB_NORMAL, "Adaptive tuned values read from cache file. Best block %u x %u x %u",
 		        prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
 		prop->Tune();
-		prof.stop();
-		prof.add(prop->Name(), 0., 0.);
 
-		if (!force_tune)
-		return;
+		if (!force_tune) {
+			stopTuneProfiler(prof);
+			return;
+		}
 	}
 
 	/* If not found or forced, tune the propagator */
@@ -815,34 +858,30 @@ void tunePropagator (Scalar *field) {
 		sprintf (tuName, "%s/../tune.txt", outDir);
 		tlog = fopen(tuName, "a");
 		if (tlog != nullptr) {
-			const char *fName =
-				(field->Field() == FIELD_SAXION) ? "Saxion" :
-				(field->Field() == FIELD_AXION)  ? "Axion"  :
-				(field->Field() == FIELD_NAXION) ? "Naxion" :
-				(field->Field() == FIELD_PAXION) ? "Paxion" : "Unknown";
 			const char *dName = (field->Device() == DEV_GPU) ? "Gpu" : "Cpu";
-			prop->AppendTuneLogHeader(tlog, fName, dName, field->NX(), field->NY(), field->NZ());
+			prop->AppendTuneLogHeader(tlog, tuneFieldName(field->Field()), dName,
+			                          field->NX(), field->NY(), field->NZ(),
+			                          (unsigned int) (pType & PROP_MASK),
+			                          (unsigned int) field->Precision(),
+			                          field->LowMem() ? 1u : 0u,
+			                          field->LowMemGPU() ? 1u : 0u,
+			                          commSize(), omp_get_max_threads(), field->getNg());
 		}
 	}
 
-	Tunable::SearchRegion R;
-	R.xLo = prop->MinBlockX(); R.xHi = prop->MaxBlockX();
-	R.yLo = prop->MinBlockY(); R.yHi = prop->MaxBlockY();
-	R.zLo = prop->MinBlockZ(); R.zHi = prop->MaxBlockZ();
-	R.dx  = prop->StepBlockX();
-	R.dy  = prop->StepBlockY();
-	R.dz  = prop->StepBlockZ();
-	R.level = 0;
-	R.regionId = 0;
+	Tunable::SearchRegion R = prop->InitialSearchRegion();
 
 	size_t globalBestTime = std::numeric_limits<size_t>::max();
 	Tunable::BlockCandidate globalBest;
 	unsigned int nEvals = 0;
 	int nextRegionId = 1;
+	const char *stopReason = "unknown";
+	bool cacheWritten = false;
+	char tuneCacheName[2048] = "";
 
 	std::map<std::tuple<unsigned int,unsigned int,unsigned int>, size_t> visited;
 
-	auto evalOrReuse = [&](Tunable::BlockCandidate &c) {
+	auto evalOrReuse = [&](Tunable::BlockCandidate &c, const char *source) {
 		auto key = std::make_tuple(c.bx, c.by, c.bz);
 		auto it = visited.find(key);
 		if (it != visited.end()) {
@@ -851,9 +890,17 @@ void tunePropagator (Scalar *field) {
 			return;
 		}
 
+		size_t evalCounter = nEvals;
+		if (myRank == 0 && tlog != nullptr)
+			prop->AppendEvalStart(tlog, evalCounter, source, c);
+
 		c.timeNs = evalBlock(c.bx, c.by, c.bz);
 		c.valid = (c.timeNs != std::numeric_limits<size_t>::max());
 		visited[key] = c.timeNs;
+
+		if (myRank == 0 && tlog != nullptr)
+			prop->AppendEvalResult(tlog, evalCounter, source, c);
+
 		nEvals++;
 	};
 
@@ -865,14 +912,15 @@ void tunePropagator (Scalar *field) {
 		auto cand = prop->SampleRegion(R, prop->AdaptiveCoarsePoints(), false);
 
 		for (auto &c : cand)
-			evalOrReuse(c);
+			evalOrReuse(c, "coarse");
 
 		auto stats = prop->ComputeStats(cand);
 
 		if (myRank == 0 && tlog != nullptr)
-			prop->AppendBatchLog(tlog, "coarse", cand, stats);
+			prop->AppendBatchLog(tlog, "coarse", cand, stats, R, false);
 
 		if (stats.nValid == 0) {
+			stopReason = "no_valid_candidates";
 			LogError("Adaptive tuner found no valid candidates in current region");
 			break;
 		}
@@ -891,34 +939,8 @@ void tunePropagator (Scalar *field) {
 
 		std::vector<Tunable::BlockCandidate> local;
 		local.push_back(proposal);
-
-		const std::array<std::array<int,3>,6> stencil = {{
-			{{+1,0,0}}, {{-1,0,0}},
-			{{0,+1,0}}, {{0,-1,0}},
-			{{0,0,+1}}, {{0,0,-1}}
-		}};
-
-		for (const auto &d : stencil) {
-			Tunable::BlockCandidate c;
-			long long bx = (long long) proposal.bx + (long long) d[0] * (long long) prop->StepBlockX();
-			long long by = (long long) proposal.by + (long long) d[1] * (long long) prop->StepBlockY();
-			long long bz = (long long) proposal.bz + (long long) d[2] * (long long) prop->StepBlockZ();
-
-			if (bx < 0 || by < 0 || bz < 0)
-				continue;
-
-			c.bx = (unsigned int) bx;
-			c.by = (unsigned int) by;
-			c.bz = (unsigned int) bz;
-			c.predicted = true;
-			c.level = R.level;
-			c.regionId = R.regionId;
-
-			if (!prop->IsValidBlock(c.bx, c.by, c.bz))
-				continue;
-
-			local.push_back(c);
-		}
+		auto neigh = prop->NeighborCandidates(proposal, R);
+		local.insert(local.end(), neigh.begin(), neigh.end());
 
 		if(0)
 		{
@@ -986,15 +1008,16 @@ void tunePropagator (Scalar *field) {
 		local.swap(localUnique);
 
 		for (auto &c : local)
-			evalOrReuse(c);
+			evalOrReuse(c, "interp");
 
 		auto pstats = prop->ComputeStats(local);
 
 		if (myRank == 0 && tlog != nullptr)
-			prop->AppendBatchLog(tlog, "interp", local, pstats);
+			prop->AppendBatchLog(tlog, "interp", local, pstats, R, false);
 
 		if (nEvals == nEvalsBeforeIter) {
 			stop = true;
+			stopReason = "no_new_points";
 			LogMsg(VERB_NORMAL, "[tpA] stopped, no new points evaluated");
 		}
 
@@ -1022,35 +1045,49 @@ void tunePropagator (Scalar *field) {
 		        "[tpA] stats min %.3f max %.3f mean %.3f median %.3f std %.3f",
 		        pstats.minTime, pstats.maxTime, pstats.meanTime, pstats.medianTime, pstats.stdTime);
 
-		int Onepassonly = false;
-		if(Onepassonly){
-			// Do only one coarse region + one interpolation pass.
-			// Stop before the next refined-region coarse scan.
-			stop = true;
-		} else
-		{
-			if (nEvals >= prop->AdaptiveMaxEvals()){
+		if (!stop) {
+			int Onepassonly = false;
+			if(Onepassonly){
+				// Do only one coarse region + one interpolation pass.
+				// Stop before the next refined-region coarse scan.
 				stop = true;
-				LogMsg(VERB_NORMAL,"[tpA] stopped, max adaptive evaluations reached");
+				stopReason = "one_pass_only";
+			} else
+			{
+				if (nEvals >= prop->AdaptiveMaxEvals()){
+					stop = true;
+					stopReason = "max_evals";
+					LogMsg(VERB_NORMAL,"[tpA] stopped, max adaptive evaluations reached");
+					}
+				else if (prop->RegionAtMinResolution(R)){
+					stop = true;
+					stopReason = "min_resolution";
+					LogMsg(VERB_NORMAL,"[tpA] stopped, min resolution reached");
 				}
-			else if (prop->RegionAtMinResolution(R)){
-				stop = true;
-				LogMsg(VERB_NORMAL,"[tpA] stopped, min resolution reached");
+				else if (prevBestTime != std::numeric_limits<size_t>::max() &&
+				         relImprove < prop->AdaptiveStopRelImprove()){
+					stop = true;
+					stopReason = "relative_improvement";
+					LogMsg(VERB_NORMAL,"[tpA] stopped, relative resolution reached");
+					}
+				else
+					R = prop->RefineAroundBest(R, globalBest, nextRegionId++);
 			}
-			else if (prevBestTime != std::numeric_limits<size_t>::max() &&
-			         relImprove < prop->AdaptiveStopRelImprove() &&
-			         globalBest.bx + 2 * prop->StepBlockX() < prop->MaxBlockX()){
-				stop = true;
-				LogMsg(VERB_NORMAL,"[tpA] stopped, relative resolution reached");
-				}
-			else
-				R = prop->RefineAroundBest(R, globalBest, nextRegionId++);
 		}
 
 	} // end while
 
-	if (myRank == 0 && tlog != nullptr)
-		fclose(tlog);
+	if (globalBestTime == std::numeric_limits<size_t>::max()) {
+		if (myRank == 0 && tlog != nullptr) {
+			prop->AppendTuneConclusion(tlog, globalBest, nEvals, stopReason, false, tuneCacheName);
+			fclose(tlog);
+		}
+		LogError("Adaptive tuner failed to find a valid candidate; keeping initial block %u x %u x %u",
+		         prop->BlockX(), prop->BlockY(), prop->BlockZ());
+		commSync();
+		stopTuneProfiler(prof);
+		return;
+	}
 
 	prop->getBaseName();
 
@@ -1059,7 +1096,7 @@ void tunePropagator (Scalar *field) {
 	switch (field->Field()) {
 		case FIELD_SAXION:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Saxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Saxion");
@@ -1068,7 +1105,7 @@ void tunePropagator (Scalar *field) {
 
 		case FIELD_AXION:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Axion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Axion");
@@ -1077,7 +1114,7 @@ void tunePropagator (Scalar *field) {
 
 		case FIELD_AXION_MOD:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Axion Mod", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Axion Mod");
@@ -1086,7 +1123,7 @@ void tunePropagator (Scalar *field) {
 
 		case FIELD_NAXION:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Naxion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Naxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Naxion");
@@ -1095,7 +1132,7 @@ void tunePropagator (Scalar *field) {
 
 		case FIELD_PAXION:
 			if (pType & PROP_BASE){
-				sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01zu Paxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Paxion");
@@ -1117,51 +1154,44 @@ void tunePropagator (Scalar *field) {
 
 	if (myRank == 0) {
 		FILE *cacheFile;
-		char tuneName[2048];
 
 		if (pType & PROP_BASE){
 #ifdef USE_2DCYL
-			sprintf (tuneName, "%s/tuneCache_2D.txt", wisDir);
+			sprintf (tuneCacheName, "%s/tuneCache_2D.txt", wisDir);
 #else
-			sprintf (tuneName, "%s/tuneCache.txt", wisDir);
+			sprintf (tuneCacheName, "%s/tuneCache.txt", wisDir);
 #endif
 		}
 
-		if (!newFile) {
-			if ((cacheFile = fopen(tuneName, "a")) == nullptr) {
-				LogError ("Error: can't open cache file, can't save tuning results");
-				commSync();
-				prof.stop();
-				prof.add(prop->Name(), 0., 0.);
-			}
+		cacheFile = fopen(tuneCacheName, newFile ? "w" : "a");
+		if (cacheFile == nullptr) {
+			LogError ("Error: can't open cache file, can't save tuning results");
 		} else {
-			if ((cacheFile = fopen(tuneName, "w")) == nullptr) {
-				LogError ("Error: can't create cache file, can't save tuning results");
-				commSync();
-				prof.stop();
-				prof.add(prop->Name(), 0., 0.);
-			}
+			unsigned int fType = tuneFieldId(field->Field());
+			unsigned int myPropType = (unsigned int) (pType & PROP_MASK);
+			unsigned int myPrecision = (unsigned int) field->Precision();
+			unsigned int myLowMem = field->LowMem() ? 1u : 0u;
+			unsigned int myLowMemGpu = field->LowMemGPU() ? 1u : 0u;
+
+			std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
+			fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %u %u %u %u %lu %lu\n",
+			         myDev.c_str(), commSize(), omp_get_max_threads(),
+			         field->NX(), field->NY(), field->NZ(),
+			         fType, myPropType, myPrecision, myLowMem, myLowMemGpu,
+			         prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
+			         field->getNg(), globalBestTime);
+			fclose(cacheFile);
+			cacheWritten = true;
 		}
+	}
 
-		unsigned int fType;
-		if      (field->Field() == FIELD_SAXION) fType = 0;
-		else if (field->Field() == FIELD_AXION)  fType = 1;
-		else if (field->Field() == FIELD_NAXION) fType = 2;
-		else if (field->Field() == FIELD_PAXION) fType = 3;
-		else fType = 999;
-
-		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-		fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu %lu\n",
-		         myDev.c_str(), commSize(), omp_get_max_threads(),
-		         field->NX(), field->NY(), field->NZ(),
-		         fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
-		         field->getNg(), globalBestTime);
-		fclose(cacheFile);
+	if (myRank == 0 && tlog != nullptr) {
+		prop->AppendTuneConclusion(tlog, globalBest, nEvals, stopReason, cacheWritten, tuneCacheName);
+		fclose(tlog);
 	}
 
 	commSync();
-	prof.stop();
-	prof.add(prop->Name(), 0., 0.);
+	stopTuneProfiler(prof);
 	LogFlush();
 }
 
