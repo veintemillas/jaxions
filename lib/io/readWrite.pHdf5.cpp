@@ -940,6 +940,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				readAttribute (file_id, &zTmp,  "z",        H5T_NATIVE_DOUBLE);
 				LogOut("Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
 				LogMsg (VERB_NORMAL, "Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+				/* On restart the saved box wins over the command line: the caxion
+				   AMR run may have refined (shrunk) L, so take PhysSize from the
+				   file, overriding any --lsize.  No-op for runs that never changed L. */
+				double lSizeR;
+				readAttribute (file_id, &lSizeR, "Physical size", H5T_NATIVE_DOUBLE);
+				myCosmos->SetPhysSize(lSizeR);
+				LogMsg (VERB_NORMAL, "PhysSize taken from file: %f", myCosmos->PhysSize());
 			}
 			//
 			// ------------------------------------------------------------------------

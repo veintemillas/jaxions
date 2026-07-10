@@ -70,6 +70,27 @@ size_t  unfoldidx(size_t idx, Scalar *axion);
 size_t idxprint = 0 ;
 //- z-coordinate of the slice that is printed as a 2D map
 size_t sliceprint = 0 ;
+static int  amr_count = 0 ;   // number of AMR refinements done so far
+static bool refine    = true; // whether AMR is still active
+
+//- Append the relevant AMR params to the restart file
+static void caxion_save_amr_restart (void)
+{
+	commSync();
+	if (commRank() == 0) {
+		char rp[1200];
+		sprintf(rp, "%s/%s.restart", outDir, outName);
+		hid_t fid = H5Fopen(rp, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (fid >= 0) {
+			int refine_i = refine ? 1 : 0;
+			writeAttribute(fid, &amr_count, "amr_count",  H5T_NATIVE_INT);
+			writeAttribute(fid, &refine_i,  "amr_refine", H5T_NATIVE_INT);
+			H5Fclose(fid);
+		} else
+			LogOut("[cax restart] WARNING: could not reopen %s to store AMR state\n", rp);
+	}
+	commSync();
+}
 
 
 /* Program */
@@ -299,12 +320,33 @@ int	main (int argc, char *argv[])
 	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
 	tunePropagator (axion);
 
-	double L = axion->BckGnd()->PhysSize();
+	double L = axion->BckGnd()->PhysSize();       // refined box restored by readConf on --restart
 	double delta = axion->BckGnd()->PhysSize()/ ((double) axion->TZ());
 	double radius_save = L;
-	bool refine = true;
-	int  amr_count = 0;                               // number of AMR refinements done
+	refine     = true;                                // file-scope; default for a fresh run
+	amr_count  = 0;                                   // file-scope; number of AMR refinements done
 	int  amr_max   = myCosmos.ICData().maxamr;        // cap (-1 = unlimited), from --maxamr
+
+	/* On restart, recover the exact AMR bookkeeping (amr_count, refine) from the
+	   attributes we stored on the restart file in checkTime(). L/delta already
+	   come back correct via readConf. Missing attributes (old restart / never
+	   refined) -> keep the fresh defaults. */
+	if (restart_flag)
+	{
+		char rp[1200];
+		sprintf(rp, "%s/%s.restart", outDir, outName);
+		hid_t fid = H5Fopen(rp, H5F_ACC_RDONLY, H5P_DEFAULT);
+		if (fid >= 0) {
+			int refine_i = 1;
+			if (readAttribute(fid, &amr_count, "amr_count",  H5T_NATIVE_INT) >= 0 &&
+			    readAttribute(fid, &refine_i,  "amr_refine", H5T_NATIVE_INT) >= 0) {
+				refine = (refine_i != 0);
+				LogOut("[cax restart] recovered amr_count=%d refine=%d, L=%f delta=%f\n",
+				       amr_count, (int)refine, L, delta);
+			}
+			H5Fclose(fid);
+		}
+	}
 
 
 	LogOut ("Start redshift loop (steps %lu)\n\n", myCosmos.ICData().nSteps);
@@ -763,6 +805,7 @@ void	checkTime (Scalar *axion, int index) {
 			LogMsg(VERB_NORMAL, "[VAX checkTime %d] Walltime reached ",index);
 			LogOut ("Walltime reached, dumping configuration...");
 			writeConf(axion, index, 1);
+			caxion_save_amr_restart();          // persist amr_count/refine onto the restart file
 			LogOut ("Done!\n");
 
 			LogOut("z Final = %f\n", *axion->zV());
@@ -782,6 +825,7 @@ void	checkTime (Scalar *axion, int index) {
 			LogMsg(VERB_NORMAL, "[VAX checkTime %d] stop file detected! stopping ... ",index);
 			LogOut ("Interrupted manually with stop file ...");
 			writeConf(axion, index, 1);
+			caxion_save_amr_restart();          // persist amr_count/refine onto the restart file
 			LogOut ("Done!\n");
 
 			LogOut("z Final = %f\n", *axion->zV());
