@@ -28,8 +28,11 @@ if [ "$1" == "" ]; then
 	echo plotStr
 	echo plotCoStr
 	echo makeVideo3D
+	echo tuneplot     tune.txt
 else
 	echo "jax ipython > rm"
-	echo $1 $2 $3
-	ipython $JAXIONS_DIR/jaxions/scripts/$1.py $2 $3
+	cmd=$1
+	shift
+	echo $cmd "$@"
+	ipython -- $JAXIONS_DIR/jaxions/scripts/$cmd.py "$@"
 fi
