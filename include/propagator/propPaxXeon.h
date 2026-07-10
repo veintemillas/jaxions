@@ -1,5 +1,6 @@
 #include<cstdio>
 #include<cmath>
+#include<algorithm>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 #include <cmath>
@@ -42,8 +43,6 @@ template<>
 inline double pax_j1_cpu<double>(double x) {
 	return j1(x);
 }
-
-
 
 template<const KickDriftType KDtype>
 inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, const double dz,
@@ -167,8 +166,9 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 		const size_t YC = (Lx>>1);
 #endif
 		
-const _MData_ mcdthVec     = opCode(set1_pd, mcdth);
+		const _MData_ mcdthVec     = opCode(set1_pd, mcdth);
 		const _MData_ isqrtmcR2Vec = opCode(set1_pd, isqrtmcR2);
+		const _MData_ smallXPotVec = opCode(set1_pd, 0.5*mcdth*isqrtmcR2*isqrtmcR2);
 		const _MData_ oneVec       = opCode(set1_pd, 1.0);
 		const _MData_ twoVec       = opCode(set1_pd, 2.0);
 		const _MData_ zeroVec      = opCode(set1_pd, 0.0);
@@ -187,25 +187,30 @@ const _MData_ mcdthVec     = opCode(set1_pd, mcdth);
 		const uint z0 = Vo/(Lx*Lx);
 		const uint zF = (Vf + Sf - 1)/Sf;
 		const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
-		const uint bY = (YC      + bSizeY - 1)/bSizeY;
+		const uint yTile = std::max<uint>(1, bSizeY/step);
+		const uint bY = (YC + yTile - 1)/yTile;
+		const uint xTile = bSizeX*step;
+		const uint bX = (XC + xTile - 1)/xTile;
 
-		for (uint zT = 0; zT < zM; zT++)
-		 for (uint yT = 0; yT < bY; yT++)
-		  #pragma omp parallel default(shared)
-		  {
-		    _MData_ tmp, mel, vel, mPy, mMy, acu, lap;
+		#pragma omp parallel default(shared)
+		{
+		  _MData_ tmp, mel, vel, mPy, mMy, acu, lap;
 
 			alignas(Align) double xbuf[step];
 			alignas(Align) double pbuf[step];
 
-		    #pragma omp for collapse(3) schedule(static)
+		  #pragma omp for collapse(5) schedule(static)
+		  for (uint zT = 0; zT < zM; zT++) {
+		   for (uint yT = 0; yT < bY; yT++) {
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (uint yy = 0; yy < bSizeY; yy++) {
-		      for (uint xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < yTile; yy++) {
+		      for (uint xT = 0; xT < bX; xT++) {
+		       for (uint xx = 0; xx < xTile; xx += step) {
 			uint zC = zz + bSizeZ*zT + z0;
-			uint yC = yy + bSizeY*yT;
+			uint yC = yy + yTile*yT;
+			uint xC = xx + xTile*xT;
 			
-			if (zC >= zF || yC >= YC)
+			if (zC >= zF || yC >= YC || xC >= XC)
 				continue;
 
 			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
@@ -322,6 +327,9 @@ else
 								opCode(mul_pd, vel, vel),
 								opCode(mul_pd, mel, mel));
 
+#ifdef PAXION_POT_SMALL_X
+					acu = opCode(mul_pd, acu, smallXPotVec);
+#else
 					// x = sqrt(rho2) / sqrt(mA R^3)
 					tmp = opCode(mul_pd, opCode(sqrt_pd, acu), isqrtmcR2Vec);
 
@@ -336,7 +344,8 @@ else
 							pbuf[lane] = 0.0;
 					}
 					acu = opCode(load_pd, pbuf);
-					
+#endif
+
 					mMy = opCode(sin_pd, acu);
 					mPy = opCode(cos_pd, acu);
 
@@ -365,10 +374,13 @@ else
 						opCode(store_pd, &v[idx], tmp);
 				}
 				break;
-			} // End prepare cases
-		   }
-		  }
-		 }
+				} // End prepare cases
+			       }
+			      }
+			   }
+			  }
+			 }
+			}
 		}
 #undef	_MData_
 #undef	step
@@ -422,6 +434,7 @@ else
 
 		const _MData_ mcdthVec     = opCode(set1_ps, mcdthf);
 		const _MData_ isqrtmcR2Vec = opCode(set1_ps, isqrtmcR2f);
+		const _MData_ smallXPotVec = opCode(set1_ps, 0.5f*mcdthf*isqrtmcR2f*isqrtmcR2f);
 		const _MData_ oneVec       = opCode(set1_ps, 1.f);
 		const _MData_ twoVec       = opCode(set1_ps, 2.f);
 		const _MData_ zeroVec      = opCode(set1_ps, 0.f);
@@ -434,25 +447,30 @@ else
 		const uint z0 = Vo/(Lx*Lx);
 		const uint zF = (Vf + Sf - 1)/Sf;
 		const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
-		const uint bY = (YC      + bSizeY - 1)/bSizeY;
+		const uint yTile = std::max<uint>(1, bSizeY/step);
+		const uint bY = (YC + yTile - 1)/yTile;
+		const uint xTile = bSizeX*step;
+		const uint bX = (XC + xTile - 1)/xTile;
 
-		for (uint zT = 0; zT < zM; zT++)
-		 for (uint yT = 0; yT < bY; yT++)
-		  #pragma omp parallel default(shared)
-		  {
-		    _MData_ tmp, mel, vel, mPy, mMy, acu, lap;
+		#pragma omp parallel default(shared)
+		{
+		  _MData_ tmp, mel, vel, mPy, mMy, acu, lap;
 			
 			alignas(Align) float xbuf[step];
 			alignas(Align) float pbuf[step];
 
-		    #pragma omp for collapse(3) schedule(static)
+		  #pragma omp for collapse(5) schedule(static)
+		  for (uint zT = 0; zT < zM; zT++) {
+		   for (uint yT = 0; yT < bY; yT++) {
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (uint yy = 0; yy < bSizeY; yy++) {
-		      for (uint xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < yTile; yy++) {
+		      for (uint xT = 0; xT < bX; xT++) {
+		       for (uint xx = 0; xx < xTile; xx += step) {
 			uint zC = zz + bSizeZ*zT + z0;
-			uint yC = yy + bSizeY*yT;
+			uint yC = yy + yTile*yT;
+			uint xC = xx + xTile*xT;
 
-			if (zC >= zF || yC >= YC)
+			if (zC >= zF || yC >= YC || xC >= XC)
 				continue;
 
 			size_t idx = zC*Sf + yC*XC + xC;
@@ -577,6 +595,9 @@ else
 								opCode(mul_ps, vel, vel),
 								opCode(mul_ps, mel, mel));
 
+#ifdef PAXION_POT_SMALL_X
+					acu = opCode(mul_ps, acu, smallXPotVec);
+#else
 					// x = sqrt(rho2) / sqrt(mA R^3)
 					tmp = opCode(mul_ps, opCode(sqrt_ps, acu), isqrtmcR2Vec);
 
@@ -592,6 +613,7 @@ else
 					}
 
 					acu = opCode(load_ps, pbuf);
+#endif
 
 					mMy = opCode(sin_ps, acu);
 					mPy = opCode(cos_ps, acu);
@@ -621,13 +643,16 @@ else
 						opCode(store_ps, &v[idx], tmp);
 				}
 				break;
-			} // End switch prepare cases
+				} // End switch prepare cases
 
 
-		      }
-		    }
+			       }
+			      }
+			 }
+			}
+		   }
 		  }
-		} //end loop
+		}
 #undef	_MData_
 #undef	step
 } // end single

@@ -76,12 +76,14 @@ __global__ void	propagatePAXKernel_LAP(
                         const uint Vo, const uint Vf, 
                         const uint NN)
 {
-	const uint local = threadIdx.x + blockDim.x*blockIdx.x;
-	const uint zloc  = threadIdx.y + blockDim.y*blockIdx.y;
+	const uint x = threadIdx.x + blockDim.x*blockIdx.x;
+	const uint y = threadIdx.y + blockDim.y*blockIdx.y;
+	const uint zloc = threadIdx.z + blockDim.z*blockIdx.z;
 
-    if (local >= Sf)
+	if (x >= Lx || y >= Lx)
 		return;
-	const uint idx = Vo + local + Sf*zloc;
+
+	const uint idx = Vo + zloc*Sf + y*Lx + x;
 
 	if	(idx >= Vf)
 		return;
@@ -204,6 +206,7 @@ template<typename Float>
 __global__ void propagatePAXKernel_POT(
 	Float * __restrict__ m,
 	Float * __restrict__ v,
+	const uint Lx,
 	const uint Sf,
 	const uint Vo,
 	const uint Vf,
@@ -212,13 +215,14 @@ __global__ void propagatePAXKernel_POT(
 	const Float iR2,
 	const Float R3
 ) {
-	const uint local = threadIdx.x + blockDim.x*blockIdx.x;
-	const uint zloc  = threadIdx.y + blockDim.y*blockIdx.y;
+	const uint x = threadIdx.x + blockDim.x*blockIdx.x;
+	const uint y = threadIdx.y + blockDim.y*blockIdx.y;
+	const uint zloc = threadIdx.z + blockDim.z*blockIdx.z;
 
-	if (local >= Sf)
+	if (x >= Lx || y >= Lx)
 		return;
 
-	const uint idx = Vo + local + Sf*zloc;
+	const uint idx = Vo + zloc*Sf + y*Lx + x;
 
 	if (idx >= Vf)
 		return;
@@ -247,10 +251,12 @@ void propagatePaxGPU(
     if (vol == 0)
         return;
 
-	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/Sf;
-	dim3 gridSize((Sf+BLSIZE-1)/BLSIZE,Lz2,1);
-	dim3 blockSize(BLSIZE,1,1);
+	const uint bx = static_cast<uint>(xBlock == 0 ? 1 : xBlock);
+	const uint by = static_cast<uint>(yBlock == 0 ? 1 : yBlock);
+	const uint bz = static_cast<uint>(zBlock == 0 ? 1 : zBlock);
+	dim3 gridSize((Lx+bx-1)/bx,(Lx+by-1)/by,(Lz2+bz-1)/bz);
+	dim3 blockSize(bx,by,bz);
 
 	const uint NN    = ppar.Ng;
 
@@ -350,7 +356,7 @@ void propagatePaxGPU(
                         <<<gridSize, blockSize, 0, stream>>>(
                             static_cast<float *>(m),
                             static_cast<float *>(v),
-                            Sf, Vo, Vf, mcdth_f, isqrtmcR2_f, fiR2, fR3
+                            Lx, Sf, Vo, Vf, mcdth_f, isqrtmcR2_f, fiR2, fR3
                         );
                 }
                 break;
@@ -361,7 +367,7 @@ void propagatePaxGPU(
                         <<<gridSize, blockSize, 0, stream>>>(
                             static_cast<double *>(m),
                             static_cast<double *>(v),
-                            Sf, Vo, Vf, mcdth, isqrtmcR2, iR2, R3
+                            Lx, Sf, Vo, Vf, mcdth, isqrtmcR2, iR2, R3
                         );
                 }   
                 break;

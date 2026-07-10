@@ -266,12 +266,16 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					const double x2   = rho2 * inv2mAR3;
 
 					double Vphys;
+#ifdef PAXION_POT_SMALL_X
+					Vphys = potPref * (-0.25*x2*x2);
+#else
 					if (x2 < 1.e-8) {
 						Vphys = potPref * (-0.25*x2*x2 + (1.0/36.0)*x2*x2*x2);
 					} else {
 						const double x = std::sqrt(x2);
 						Vphys = potPref * (1.0 - j0(2.0*x) - x2);
 					}
+#endif
 
 					ptC += Vphys;
 
@@ -515,12 +519,16 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					const double x2   = rho2 * inv2mAR3;
 
 					double Vphys;
+#ifdef PAXION_POT_SMALL_X
+					Vphys = potPref * (-0.25*x2*x2);
+#else
 					if (x2 < 1.e-6) {
 						Vphys = potPref * (-0.25*x2*x2 + (1.0/36.0)*x2*x2*x2);
 					} else {
 						const double x = std::sqrt(x2);
 						Vphys = potPref * (1.0 - j0(2.0*x) - x2);
 					}
+#endif
 
 					ptC += Vphys;
 
