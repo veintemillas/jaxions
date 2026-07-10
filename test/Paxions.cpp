@@ -126,16 +126,15 @@ int	main (int argc, char *argv[])
 	ninfa.index = fIndex;
 	ninfa.redmap = endredmap;
 
-	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
-	tunePropagator (axion);
-
-
 	if (axion->Field() == FIELD_AXION)
 	{
 		LogOut("-----------------------\n TRANSITION TO PAXION \n");
 		thetaToPaxion (axion);
 	}
-	resetPropagator(axion);
+
+	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
+	tunePropagator (axion);
+
 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
