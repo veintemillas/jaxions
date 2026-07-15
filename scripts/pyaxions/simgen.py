@@ -429,7 +429,7 @@ def simgen(N=256, zRANKS=1, prec='single', dev='cpu', fftplan=64, lowmem=False, 
            nologmpi=True, verbose=1, ftype='saxion', verb=False,
            SCRIPT='simu.sh', THR=1,
            USA=' --bind-to socket --mca btl_base_warn_component_unused 0',
-           SLURM=False, SLURM_SCRIPT='slurm-batch-job.sh',
+           SLURM=False, SLURM_SCRIPT=None,
            SLURM_MODULES=None, SLURM_RUNS=None, **kwargs):
     """
     simgen creates a string of command line flags to select options for vaxion3d
@@ -498,7 +498,7 @@ def simgen(N=256, zRANKS=1, prec='single', dev='cpu', fftplan=64, lowmem=False, 
     USA       str             additional mpirun options
     SLURM     bool/dict False  use srun and write a separate SLURM batch script;
                               a dict overrides sbatch options
-    SLURM_SCRIPT path          filename of the SLURM batch script
+    SLURM_SCRIPT path          batch filename; defaults beside SCRIPT
     SLURM_MODULES sequence     modules loaded by the batch script
     SLURM_RUNS sequence        simu.sh argument strings run by the batch job
     kwargs
@@ -626,6 +626,10 @@ def simgen(N=256, zRANKS=1, prec='single', dev='cpu', fftplan=64, lowmem=False, 
     )
     print('Run script written to %s' % script_path)
     if SLURM is not False and SLURM is not None:
+        if SLURM_SCRIPT is None:
+            SLURM_SCRIPT = os.path.join(
+                os.path.dirname(script_path), 'slurm-batch-job.sh'
+            )
         slurm_path = _write_slurm_batch(
             SLURM_SCRIPT, script_path, SLURM, zRANKS, THR,
             modules=SLURM_MODULES, runs=SLURM_RUNS
