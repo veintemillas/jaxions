@@ -318,7 +318,20 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Nz, Ny, Nx, v, m2f, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
-					default:
+					case	FFT1D_RtoR_M2toM2:
+
+						if (dFft & FFT_FWD)
+							planForward = static_cast<void *>(fftwf_plan_r2r_1d(Nx,m2f,m2f,FFTW_RODFT10,fftplanType));
+						break;
+
+					case	FFT_TRANSPOSE_R2R_M2toM2:
+
+						planForward = static_cast<void *>(fftwf_mpi_plan_many_transpose(Nz,Nx,1,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,
+																m2f,m2f,MPI_COMM_WORLD,fftplanType));
+						break;
+
+
+						default:
 						LogError ("No FFT plan selected.");
 						break;
 				}

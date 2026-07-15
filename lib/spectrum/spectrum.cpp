@@ -13,6 +13,10 @@
 
 #include "utils/kgvops.h"
 
+#ifdef USE_2DCYL
+	#include "spectrum/J0tabler.h"
+#endif
+
 using namespace profiler;
 
 	/* Correction tables for the spectrum of gradients:
@@ -831,17 +835,23 @@ void	SpecBin::pRun	() {
 
 void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 
+#ifdef USE_2DCYL
+#define NRUN_DISPATCH(Float, Mask) SpecBin::nRun_2D<Float, Mask>(nrt)
+#else
+#define NRUN_DISPATCH(Float, Mask) SpecBin::nRun<Float, Mask>(nrt)
+#endif
+
 	switch (mask)
 	{
 		case SPMASK_FLAT :
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_FLAT> (nrt);
+					NRUN_DISPATCH(float,SPMASK_FLAT);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_FLAT> (nrt);
+					NRUN_DISPATCH(double,SPMASK_FLAT);
 					break;
 
 					default :
@@ -854,11 +864,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_VIL> (nrt);
+					NRUN_DISPATCH(float,SPMASK_VIL);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_VIL> (nrt);
+					NRUN_DISPATCH(double,SPMASK_VIL);
 					break;
 
 					default :
@@ -871,11 +881,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 					switch (fPrec)
 					{
 						case FIELD_SINGLE :
-						SpecBin::nRun<float,SPMASK_VIL2> (nrt);
+						NRUN_DISPATCH(float,SPMASK_VIL2);
 						break;
 
 						case FIELD_DOUBLE :
-						SpecBin::nRun<double,SPMASK_VIL2> (nrt);
+						NRUN_DISPATCH(double,SPMASK_VIL2);
 						break;
 
 						default :
@@ -888,11 +898,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_SAXI> (nrt);
+					NRUN_DISPATCH(float,SPMASK_SAXI);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_SAXI> (nrt);
+					NRUN_DISPATCH(double,SPMASK_SAXI);
 					break;
 
 					default :
@@ -905,11 +915,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_REDO> (nrt);
+					NRUN_DISPATCH(float,SPMASK_REDO);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_REDO> (nrt);
+					NRUN_DISPATCH(double,SPMASK_REDO);
 					break;
 
 					default :
@@ -922,11 +932,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_DIFF> (nrt);
+					NRUN_DISPATCH(float,SPMASK_DIFF);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_DIFF> (nrt);
+					NRUN_DISPATCH(double,SPMASK_DIFF);
 					break;
 
 					default :
@@ -939,11 +949,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_GAUS> (nrt);
+					NRUN_DISPATCH(float,SPMASK_GAUS);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_GAUS> (nrt);
+					NRUN_DISPATCH(double,SPMASK_GAUS);
 					break;
 
 					default :
@@ -956,10 +966,12 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
+					NRUN_DISPATCH(float,SPMASK_BALL);
 					SpecBin::nRun<float,SPMASK_BALL> (nrt);
 					break;
 
 					case FIELD_DOUBLE :
+					NRUN_DISPATCH(double,SPMASK_BALL);
 					SpecBin::nRun<double,SPMASK_BALL> (nrt);
 					break;
 
@@ -973,11 +985,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_AXIT> (nrt);
+					NRUN_DISPATCH(float,SPMASK_AXIT);					
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_AXIT> (nrt);
+					NRUN_DISPATCH(double,SPMASK_AXIT);					
 					break;
 
 					default :
@@ -990,11 +1002,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_AXIT2> (nrt);
+					NRUN_DISPATCH(float,SPMASK_AXIT2);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_AXIT2> (nrt);
+					NRUN_DISPATCH(double,SPMASK_AXIT2);
 					break;
 
 					default :
@@ -1007,11 +1019,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_AXITV> (nrt);
+					NRUN_DISPATCH(float,SPMASK_AXITV);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_AXITV> (nrt);
+					NRUN_DISPATCH(double,SPMASK_AXITV);
 					break;
 
 					default :
@@ -1024,6 +1036,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 		LogError("[Spectrum nRun] SPMASK not recognised!");
 		break;
 	}
+
 }
 
 
@@ -4406,3 +4419,198 @@ void	SpecBin::wRun	() {
 		break;
   }
 }
+
+#ifdef USE_2DCYL
+
+
+template<typename Float, SpectrumMaskType mask>
+void SpecBin::nRun_2D(nRunType nrt)
+{
+    switch (fType) {
+
+        case FIELD_SAXION:
+        {
+
+            auto &myPlan = AxionFFT::fetchPlan("spec1Dm2");
+            auto &myTran = AxionFFT::fetchPlan("transpose");
+
+            if (!(nrt & NRUN_K))
+                return;
+
+			binK.assign(nbins, 0.);
+			
+			
+			const int mIdx = commThreads();
+			std::vector<double>	tBinK;
+			tBinK.resize(nbins*mIdx);
+			tBinK.assign(nbins*mIdx, 0.0);
+
+            constexpr double twopi = 2.0 * M_PI;
+
+            auto *m  = static_cast<Float *>(field->mStart());
+            auto *v  = static_cast<Float *>(field->vCpu());
+            auto *m2 = static_cast<Float *>(field->m2Cpu());
+
+            const size_t Nz       = field->NX();   // z transform length
+            const size_t NrLocal  = field->NZ();   // local rho
+            const size_t NrGlobal = field->TZ();   // global rho
+
+            const size_t NkzLocal = NrLocal;
+            const size_t kzOffset = NrLocal*commRank();
+            const double delta = field->Delta();
+
+            const double dkz = M_PI / (double(Nz) * delta);
+            const double dkp = M_PI / (double(NrGlobal) * delta); // or your chosen rhoMax convention
+
+            auto bessel0_table = getJ0Table<Float>(NrGlobal, NkpLocal, kpOffset, 1, dkp, commRank());
+
+            /*
+             * 1. Build thetadot(z,rho), sine-transform along z.
+             *
+             * Before transpose:
+             *
+             *     m2[irho_local*Nz + ikz]
+             *
+             * After transpose:
+             *
+             *     m2[ikz_local*NrGlobal + irho_global]
+             */
+
+            for (size_t irho = 0; irho < NrLocal; ++irho) {
+
+                /*
+                 * Use temporary m2[0 ... Nz-1].
+                 *
+                 * RODFT10 corresponds roughly to half-cell odd extension.
+                 * If you include z=0, make sure theta_dot(0)=0.
+                 */
+
+                for (size_t iz = 0; iz < Nz; ++iz) {
+
+                    if (iz == 0)
+                    {
+                        m2[iz] = (Float) 0.0;
+                        continue;
+                    }
+                    const size_t id = irho*Nz+iz;
+
+                    const Float phir = m[2*id    ];
+                    const Float phii = m[2*id + 1];
+
+                    const Float vr = v[2*id    ];
+                    const Float vi = v[2*id + 1];
+
+                    const Float mod2 = phir*phir + phii*phii;
+
+                    Float thetaDot = Float(0);
+
+                    if (mod2 > Float(0)) {
+                        /*
+                         * Im(dotphi * phi^*) / |phi|^2
+                         *
+                         * dotphi * phi^* = (vr+i vi)(phir - i phii)
+                         * Im = vi*phir - vr*phii
+                         */
+                        thetaDot = (vi*phir - vr*phii) / mod2;
+                    } else {
+                        thetaDot = (vi*phir - vr*phii) ;
+                    }
+
+                    m2[iz] = thetaDot;
+                }
+
+                myPlan.run(FFT_FWD);
+
+                /*
+                 * Store transformed line into its rho slot.
+                 * Since m2[0:Nz] was the temporary line, copy to m2[irho*Nz:Nz].
+                 */
+
+                memmove(&m2[irho*Nz],&m2[0],sizeof(Float)*Nz);
+            }
+
+            /*
+             * 2. Transpose:
+             *
+             *   m2[irho_local][ikz_all]
+             *        ->
+             *   m2[ikz_local][irho_global]
+             */
+
+            myTran.run(FFT_FWD);
+
+            /*
+             * 3. Bessel transform and binning.
+             *
+             * Since we only use thetadot and later time-average:
+             *
+             *   n_k   = fA^2 / omega * |thetadot_k|^2
+             *   rho_k = fA^2         * |thetadot_k|^2
+             */
+
+			#pragma omp parallel
+			{
+			const int tIdx = omp_get_thread_num();
+
+			#pragma omp for collapse(2) schedule(static)
+            for (size_t ikzLoc = 0; ikzLoc < NkzLocal; ++ikzLoc) {
+				for (size_t ikpLoc = 0; ikpLoc < NkpLocal; ++ikpLoc) {
+
+					const size_t ikzGlob = ikzLoc + kzOffset;
+					const double kz = dkz * double(ikzGlob + 1);
+
+                    const size_t ikpGlob = ikpLoc + kpOffset;
+                    const double kp = dkp * double(ikpGlob);
+                    const double k  = std::sqrt(kz*kz + kp*kp);
+
+                    double td_k = 0.0;
+
+                    for (size_t ir = 0; ir < NrGlobal; ++ir) {
+                        const Float B = bessel0_table[ikpLoc*NrGlobal + ir];
+                        td_k += double(B) * double(m2[ikzLoc*NrGlobal + ir]);
+                    }
+
+                    td_k *= twopi * delta * delta * delta;
+
+                    const double td2 = td_k * td_k;
+
+                    const int ib = floor(k);
+
+                    if (ib >= 0 && ib < nBins) {
+						// fill bins in the local vector
+                        tbinK[ib+tIdx*nbins] += kp * td2;
+                    }
+                }
+            }
+			#pragma omp for schedule(static)
+			for (size_t ib = 0; ib < nbins; ++ib) {
+				double sum = 0.0;
+				for (int t = 0; t < mIdx; ++t)
+					sum += tBinK[ib + t*nbins];
+
+				binK[ib] = sum;
+			}
+			}// end parallel?
+			            
+			// MPI reduction 
+			std::copy_n(binK.begin(), nbins, tBinK.begin());
+			MPI_Allreduce(tBinK.data(), binK.data(), nbins, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+            const double norm = dkp * dkz / (4.0 * M_PI * M_PI);
+
+            for (int ib = 0; ib < nbins; ++ib) {
+                binK[ib] = norm * binK[ib];
+            }
+
+        
+            field->setM2(M2_DIRTY);
+        }
+        break;
+
+        case FIELD_WKB:
+        default:
+            LogError("Error: Field not supported");
+            return;
+    }
+}
+#endif

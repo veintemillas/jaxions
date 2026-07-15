@@ -87,7 +87,11 @@
 				/* Number of natural bins */
 				pzrescale = Ly*Ly/Tz/Tz;
 				// powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+#ifdef USE_2DCYL
+				powMax = floor(sqrt((Ly>>1)*(Ly>>1) + pzrescale*(Tz>>1)*(Tz>>1)))+1;
+#else 
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + pzrescale*(Tz>>1)*(Tz>>1)))+1;
+#endif
 				/* Number of user desired bins */
 				nbins = measinfo.nbinsspec < 0 ? powMax : (size_t) measinfo.nbinsspec;
 				/* Multiplier */
@@ -184,6 +188,11 @@
 					AxionFFT::initPlan (field, FFT_CtoC_M2toM2,  FFT_FWDBCK, "FFT_CtoC_M2toM2");
 				}
 
+#ifdef USE_2DCYL
+				AxionFFT::initPlan (field, FFT1D_RtoR_M2toM2,  FFT_FWDBCK, "spec1Dm2");
+				AxionFFT::initPlan (field, FFT_TRANSPOSE_R2R_M2toM2,  FFT_FWD, "transpose");
+#endif
+
 				LogMsg(VERB_HIGH,"[spe] SpecBin constructor ended.");
 				LogFlush();
 		}
@@ -215,6 +224,10 @@
 		template<typename Float, SpectrumMaskType mask>
 		void	nRun		(nRunType nrt);
 
+#ifdef USE_2DCYL
+		template<typename Float, SpectrumMaskType mask>
+		void	nRun_2D		(nRunType nrt);
+#endif
 		template<typename Float, SpectrumMaskType mask>
 		void	nSRun		(nRunType nrt);
 
