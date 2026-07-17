@@ -103,6 +103,9 @@ bool measCPU  = false;
 bool maskenergyonly = false;
 
 size_t kMax  = 2;
+int    specKMax = -1;
+int    cyl3DExportIndex = -1;
+bool   cyl3DInscribed = false;
 size_t iter  = 0;
 size_t parm1 = 0;
 size_t wTime = std::numeric_limits<std::size_t>::max();
@@ -319,6 +322,9 @@ void	PrintUsage(char *name)
 	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions.\n");
 	printf("\n");
 	printf("  --kmax  [int]                 Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
+	printf("  --spec-kmax [int]             Cylindrical-spectrum cutoff in fundamental momentum units (default full spectrum).\n");
+	printf("  --cyl3d-export [int]          Export cylindrical velocity as a redundant 3D configuration at this index.\n");
+	printf("  --cyl3d-inscribed             Export an inscribed Cartesian cube, cropping x, y and z at fixed lattice spacing.\n");
 	printf("  --kcr   [float]               kritical kappa (default 1.0).\n");
 	printf("  --mode0 [float]               Value of axion zero mode [rad] (default random).\n");
 	printf("\n");
@@ -1973,6 +1979,44 @@ int	parseArgs (int argc, char *argv[])
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&deninfa.nbinsspec));
 
 			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--spec-kmax"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a cylindrical-spectrum maximum momentum\n");
+				exit(1);
+			}
+			sscanf(argv[i+1], "%d", &specKMax);
+			if (specKMax < 0)
+			{
+				printf("Error: --spec-kmax must be non-negative\n");
+				exit(1);
+			}
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--cyl3d-export"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need an output configuration index\n");
+				exit(1);
+			}
+			sscanf(argv[i+1], "%d", &cyl3DExportIndex);
+			if (cyl3DExportIndex < 0)
+			{
+				printf("Error: --cyl3d-export must be non-negative\n");
+				exit(1);
+			}
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--cyl3d-inscribed"))
+		{
+			cyl3DInscribed = true;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--strmeas"))

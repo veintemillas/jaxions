@@ -1,7 +1,54 @@
+#ifndef _J0_TABLER_
+#define _J0_TABLER_
+
 #include <vector>
 #include <cstdio>
 #include <cstdint>
 #include <cmath>
+
+struct J0ProductHeader {
+    uint64_t magic;
+    uint64_t version;
+    uint64_t NrGlobal;
+    uint64_t cacheSize;
+    uint64_t sizeofFloat;
+};
+
+template<typename Float>
+bool loadJ0ProductCache(const char *fname, Float *cache,
+                        size_t NrGlobal, size_t cacheSize)
+{
+    FILE *fp = fopen(fname, "rb");
+    if (!fp) return false;
+
+    J0ProductHeader h;
+    const uint64_t magic = 0x4A3050524F445543ULL; // "J0PRODUC"
+    const bool headerRead = fread(&h, sizeof(h), 1, fp) == 1;
+    const bool valid = headerRead && h.magic == magic && h.version == 1 &&
+        h.NrGlobal == NrGlobal && h.cacheSize == cacheSize &&
+        h.sizeofFloat == sizeof(Float);
+    const bool dataRead = valid &&
+        fread(cache, sizeof(Float), cacheSize, fp) == cacheSize;
+    fclose(fp);
+    return dataRead;
+}
+
+template<typename Float>
+bool saveJ0ProductCache(const char *fname, const Float *cache,
+                        size_t NrGlobal, size_t cacheSize)
+{
+    FILE *fp = fopen(fname, "wb");
+    if (!fp) return false;
+
+    const J0ProductHeader h = {
+        0x4A3050524F445543ULL, 1, uint64_t(NrGlobal), uint64_t(cacheSize),
+        uint64_t(sizeof(Float))
+    };
+    const bool written = fwrite(&h, sizeof(h), 1, fp) == 1 &&
+        fwrite(cache, sizeof(Float), cacheSize, fp) == cacheSize;
+    fclose(fp);
+    return written;
+}
 
 template<typename Float>
 struct J0Header {
@@ -104,10 +151,8 @@ void buildJ0Table(std::vector<Float> &B,
         for (size_t ir = 0; ir < NrGlobal; ++ir) {
 
             const double rho = double(ir) * dr;
-            B[ikp*NrGlobal + ir] =
-            Float(ir * j0(kp * ir * delta));
-            // B[ikpLoc * NrGlobal + ir] =
-            //     Float(rho * j0(kp * rho));
+            B[ikpLoc * NrGlobal + ir] =
+                Float(rho * ::j0(kp * rho));
         }
     }
 }
@@ -132,3 +177,5 @@ std::vector<Float> getJ0Table(size_t NrGlobal,
 
     return B;
 }
+
+#endif

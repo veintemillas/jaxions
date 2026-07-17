@@ -551,6 +551,13 @@ const std::complex<float> If(0.,1.);
 	commSync();
 	LogMsg (VERB_NORMAL, "Rank %d Calling destructor...",commRank());
 
+	/* FFTW plans, especially MPI transpose plans, retain the field pointers
+	 * used at planning time.  Destroy them before releasing m/m2 storage. */
+	if ((fieldType & FIELD_REDUCED) == false) {
+		LogMsg(VERB_HIGH, "Rank %d destroying FFT plans before field buffers", commRank());
+		AxionFFT::closeFFT();
+	}
+
 	bckgnd = nullptr;
 
 	if (m != nullptr)
@@ -623,8 +630,6 @@ if (k2_a != nullptr)
 		#endif
 	}
 
-	if ((fieldType & FIELD_REDUCED) == false)
-		AxionFFT::closeFFT();
 //printf("%d 9\n",commRank());fflush(stdout);commSync();
 
 }

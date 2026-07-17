@@ -9,8 +9,14 @@
 	#include "enum-field.h"
 	#include "scalar/scalarField.h"
 	#include"fft/fftCode.h"
+	#ifdef USE_2DCYL
+	#include "spectrum/cylindricalSpectrum.h"
+	#endif
 	
 	class	SpecBin {
+	#ifdef USE_2DCYL
+		friend class CylindricalSpectrum;
+	#endif
 
 		private:
 
@@ -181,16 +187,16 @@
 				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision(); /* total data volume including padding */
 				dataBareSize  =  V*field->Precision();            /* total data volume without padding */
 
+#ifdef USE_2DCYL
+				AxionFFT::initPlan (field, FFT1D_RtoR_M2toM2,  FFT_FWD, "spec1Dm2");
+				AxionFFT::initPlan (field, FFT_TRANSPOSE_R2R_M2toM2,  FFT_FWD, "transpose");
+#else
 				LogMsg(VERB_HIGH,"[spe] Preparing FFT plan pSpecAx for R2C");
 				AxionFFT::initPlan (field, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 				if (field->Field() == FIELD_PAXION){
 					LogMsg(VERB_HIGH,"[spe] Preparing FFT plan FFT_CtoC_M2toM2");
 					AxionFFT::initPlan (field, FFT_CtoC_M2toM2,  FFT_FWDBCK, "FFT_CtoC_M2toM2");
 				}
-
-#ifdef USE_2DCYL
-				AxionFFT::initPlan (field, FFT1D_RtoR_M2toM2,  FFT_FWDBCK, "spec1Dm2");
-				AxionFFT::initPlan (field, FFT_TRANSPOSE_R2R_M2toM2,  FFT_FWD, "transpose");
 #endif
 
 				LogMsg(VERB_HIGH,"[spe] SpecBin constructor ended.");
@@ -224,10 +230,6 @@
 		template<typename Float, SpectrumMaskType mask>
 		void	nRun		(nRunType nrt);
 
-#ifdef USE_2DCYL
-		template<typename Float, SpectrumMaskType mask>
-		void	nRun_2D		(nRunType nrt);
-#endif
 		template<typename Float, SpectrumMaskType mask>
 		void	nSRun		(nRunType nrt);
 
