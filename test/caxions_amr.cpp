@@ -427,7 +427,6 @@ int	main (int argc, char *argv[])
 					LogOut("Double crossing. No more AMR\n");
 					refine = false;
 				}
-				LogOut("radius %f (save %f) cross %d ... \n", r,radius_save, cross); fflush(stdout);
 				// refinement condition, when loop has shrunk enough
 				// UNLESS it is in the focused phase
 				// I define it with the double zero 

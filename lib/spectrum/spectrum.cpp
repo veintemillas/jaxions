@@ -49,9 +49,12 @@ void	SpecBin::fillBins	() {
 		halfcomplex ? "halfcomplex" : "full") ;LogFlush();
 	using cFloat = std::complex<Float>;
 
-	/* The factor that will multiply the |ft|^2, taken to be L^3/(2 N^6) */
-	const double norm = (field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()) /
-			    (2.*(((double) field->TotalSize())*((double) field->TotalSize())));
+	/* The factor multiplying |FFT|^2 is V/(2*Nsites^2).  Writing V=L^3
+	 * silently assumes a cubic global lattice; Delta^3*Nsites is the same
+	 * volume for cubes and also handles rectangular Nx x Ny x Nz fields. */
+	const double totalSites = double(field->TotalSize());
+	const double physicalVolume = std::pow(field->Delta(), 3)*totalSites;
+	const double norm = physicalVolume/(2.0*totalSites*totalSites);
 	const int mIdx = commThreads();
 
 	size_t	zBase = (Ly/commSize())*commRank();
@@ -831,17 +834,24 @@ void	SpecBin::pRun	() {
 
 void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 
+#ifdef USE_2DCYL
+	CylindricalSpectrum::nRun(*this, mask, nrt);
+	return;
+#endif
+
+#define NRUN_DISPATCH(Float, Mask) SpecBin::nRun<Float, Mask>(nrt)
+
 	switch (mask)
 	{
 		case SPMASK_FLAT :
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_FLAT> (nrt);
+					NRUN_DISPATCH(float,SPMASK_FLAT);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_FLAT> (nrt);
+					NRUN_DISPATCH(double,SPMASK_FLAT);
 					break;
 
 					default :
@@ -854,11 +864,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_VIL> (nrt);
+					NRUN_DISPATCH(float,SPMASK_VIL);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_VIL> (nrt);
+					NRUN_DISPATCH(double,SPMASK_VIL);
 					break;
 
 					default :
@@ -871,11 +881,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 					switch (fPrec)
 					{
 						case FIELD_SINGLE :
-						SpecBin::nRun<float,SPMASK_VIL2> (nrt);
+						NRUN_DISPATCH(float,SPMASK_VIL2);
 						break;
 
 						case FIELD_DOUBLE :
-						SpecBin::nRun<double,SPMASK_VIL2> (nrt);
+						NRUN_DISPATCH(double,SPMASK_VIL2);
 						break;
 
 						default :
@@ -888,11 +898,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_SAXI> (nrt);
+					NRUN_DISPATCH(float,SPMASK_SAXI);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_SAXI> (nrt);
+					NRUN_DISPATCH(double,SPMASK_SAXI);
 					break;
 
 					default :
@@ -905,11 +915,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_REDO> (nrt);
+					NRUN_DISPATCH(float,SPMASK_REDO);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_REDO> (nrt);
+					NRUN_DISPATCH(double,SPMASK_REDO);
 					break;
 
 					default :
@@ -922,11 +932,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_DIFF> (nrt);
+					NRUN_DISPATCH(float,SPMASK_DIFF);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_DIFF> (nrt);
+					NRUN_DISPATCH(double,SPMASK_DIFF);
 					break;
 
 					default :
@@ -939,11 +949,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_GAUS> (nrt);
+					NRUN_DISPATCH(float,SPMASK_GAUS);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_GAUS> (nrt);
+					NRUN_DISPATCH(double,SPMASK_GAUS);
 					break;
 
 					default :
@@ -956,10 +966,12 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
+					NRUN_DISPATCH(float,SPMASK_BALL);
 					SpecBin::nRun<float,SPMASK_BALL> (nrt);
 					break;
 
 					case FIELD_DOUBLE :
+					NRUN_DISPATCH(double,SPMASK_BALL);
 					SpecBin::nRun<double,SPMASK_BALL> (nrt);
 					break;
 
@@ -973,11 +985,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_AXIT> (nrt);
+					NRUN_DISPATCH(float,SPMASK_AXIT);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_AXIT> (nrt);
+					NRUN_DISPATCH(double,SPMASK_AXIT);
 					break;
 
 					default :
@@ -990,11 +1002,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_AXIT2> (nrt);
+					NRUN_DISPATCH(float,SPMASK_AXIT2);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_AXIT2> (nrt);
+					NRUN_DISPATCH(double,SPMASK_AXIT2);
 					break;
 
 					default :
@@ -1007,11 +1019,11 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_AXITV> (nrt);
+					NRUN_DISPATCH(float,SPMASK_AXITV);
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_AXITV> (nrt);
+					NRUN_DISPATCH(double,SPMASK_AXITV);
 					break;
 
 					default :
@@ -1024,6 +1036,8 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 		LogError("[Spectrum nRun] SPMASK not recognised!");
 		break;
 	}
+
+#undef NRUN_DISPATCH
 }
 
 
@@ -2209,6 +2223,11 @@ void	SpecBin::nSRun	(nRunType nrt) {
 
 void	SpecBin::nmodRun	() {
 
+#ifdef USE_2DCYL
+	CylindricalSpectrum::modeData(*this);
+	return;
+#endif
+
 	if (fPrec == FIELD_SINGLE) {
 		if (spec)
 			fillBins<float,  SPECTRUM_NN, true> ();
@@ -2223,6 +2242,11 @@ void	SpecBin::nmodRun	() {
 }
 
 void	SpecBin::avekRun	() {
+
+#ifdef USE_2DCYL
+	CylindricalSpectrum::modeData(*this);
+	return;
+#endif
 
 	if (fPrec == FIELD_SINGLE) {
 		if (spec)

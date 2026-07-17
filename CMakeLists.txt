@@ -45,6 +45,8 @@ set(USE_PROP_LEAP OFF CACHE BOOL "Leapfrog propagators")
 
 set(USE_2DCYL OFF CACHE BOOL "Cylindrical 2D")
 set(USE_PAXION_SMALL_X_POT OFF CACHE BOOL "Use leading small-x approximation for Paxion CPU potential")
+set(USE_CYL_J0_VECTOR_CACHE OFF CACHE BOOL
+    "Cache the complete cylindrical J0 transform table in a vector")
 
 set(USE_NN_BINS OFF CACHE BOOL "Output occupation number bins")
 
@@ -174,6 +176,9 @@ if(USE_2DCYL)
 endif()
 if(USE_PAXION_SMALL_X_POT)
   add_compile_definitions(PAXION_POT_SMALL_X)
+endif()
+if(USE_CYL_J0_VECTOR_CACHE)
+  add_compile_definitions(USE_CYL_J0_VECTOR_CACHE)
 endif()
 
 set(OUTPUT_FLAGS "")

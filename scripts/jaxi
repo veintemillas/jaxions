@@ -25,6 +25,7 @@ if [ "$1" == "" ]; then
 	echo plot4D       axion.m.xxxxx opt
 	echo plotMask      axion.m.xxxxx
 	echo test
+	echo cylStringSpectrum  [out/cylStringSpectrum.dat]
 	echo plotStr
 	echo plotCoStr
 	echo makeVideo3D
