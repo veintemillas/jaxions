@@ -75,6 +75,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		mask = mask & (SPMASK_FLAT | SPMASK_AXIT | SPMASK_AXIT2 | SPMASK_AXITV);
 		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask corrected = %d",mask);
 		}
+	else if (axiona->Field() == FIELD_PAXION){
+		// paxion supports the unmasked and the self-contained AXITV (|psi|^2) mask
+		mask = mask & (SPMASK_FLAT | SPMASK_AXITV);
+		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask corrected (paxion) = %d",mask);
+		}
 
 	int redmap = info.redmap;
 	StringMeasureType strmeas = info.strmeas;
@@ -344,6 +349,18 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							specAna.pRun();
 								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 
+					/* Paxion AXITV masked power spectrum. pRun above consumed the
+					   energy in m2, so recompute it fresh, apply the |psi|^2 AXITV
+					   window in place, and re-run pRun -> /pSpectrum/sPmaskedV. */
+					if ((axiona->Field() == FIELD_PAXION) && (mask & SPMASK_AXITV)){
+						LogMsg(VERB_NORMAL, "[Meas %d] PSPV (paxion axitons)",indexa);
+						void *eRes; trackAlloc(&eRes, 256); memset(eRes, 0, 256);
+						energy(axiona, eRes, EN_MAP, shiftz);          // fresh paxion energy -> m2 = M2_ENERGY
+						trackFree(eRes);
+						specAna.maskPaxionEnergyAxitv();               // apply |psi|^2 window to m2 in place
+						specAna.pRun();                                 // FFT masked energy -> SPECTRUM_P
+						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmaskedV");
+					}
 
 					if (measa & MEAS_MULTICON){
 						LogMsg(VERB_NORMAL, "[Meas %d] Multi contrast tool",indexa);LogFlush();
@@ -699,7 +716,10 @@ writePMapHdf5s (axiona, LAB);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
 
-						if (prntmsk[i]){
+						// The masker() builds/prints the mask map via the axion/saxion
+						// machinery; it is not defined for the paxion field, whose
+						// AXITV spectrum is self-contained inside nRun. Skip it there.
+						if (prntmsk[i] && axiona->Field() != FIELD_PAXION){
 							if (mulmask[i]){
 								LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							} else {

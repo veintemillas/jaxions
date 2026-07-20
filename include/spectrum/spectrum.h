@@ -223,12 +223,16 @@
 		void	nSRun		(SpectrumMaskType mask = SPMASK_FLAT, nRunType nrt = NRUN_KGV);
 		void	nSHTRun		();
 		void	pRun		();
+		void	maskPaxionEnergyAxitv	();	// AXITV |psi|^2 window applied in place to the paxion energy in m2
 		void	nmodRun		();
 		void	avekRun		();
 		void  wRun(SpectrumMaskType mask);
 
 		template<typename Float, SpectrumMaskType mask>
 		void	nRun		(nRunType nrt);
+
+		template<typename Float>
+		void	maskPaxionEnergyAxitv	();
 
 		template<typename Float, SpectrumMaskType mask>
 		void	nSRun		(nRunType nrt);

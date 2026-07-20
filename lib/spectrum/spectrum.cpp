@@ -830,6 +830,50 @@ void	SpecBin::pRun	() {
 
 }
 
+// AXITV masking of the paxion energy density (in place, in m2), so a subsequent
+// pRun() gives the masked power spectrum. Same |psi|^2 = m^2+v^2 criterion and
+// tanh window as the paxion nRun AXITV. The energy must already be in m2
+// (M2_ENERGY); the caller recomputes it and re-FFTs afterwards.
+void	SpecBin::maskPaxionEnergyAxitv	() {
+	if (field->m2Status() != M2_ENERGY) {
+		LogError("[pRun paxion mask] energy not in M2 (status %d); skipping AXITV mask.", field->m2Status());
+		return;
+	}
+	switch (fPrec) {
+		case FIELD_SINGLE: maskPaxionEnergyAxitv<float>();  break;
+		case FIELD_DOUBLE: maskPaxionEnergyAxitv<double>(); break;
+		default: LogError("[pRun paxion mask] precision not recognised."); break;
+	}
+}
+
+template<typename Float>
+void	SpecBin::maskPaxionEnergyAxitv	() {
+	Float *m2 = static_cast<Float*>(field->m2Cpu());
+	Float *m  = static_cast<Float*>(field->mStart());
+	Float *v  = static_cast<Float*>(field->vStart());
+	const size_t S = field->Size();
+
+	/* ethres = <|psi|^2> * edens_sigma_threshold  (same reference as the nRun AXITV) */
+	double localsum = 0.0;
+	#pragma omp parallel for schedule(static) reduction(+:localsum)
+	for (size_t idx=0; idx < S; idx++)
+		localsum += (double) m[idx]*(double) m[idx] + (double) v[idx]*(double) v[idx];
+	double globalsum = 0.0;
+	MPI_Allreduce(&localsum, &globalsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	double meanrho = globalsum / (double) field->TotalSize();
+	Float ethres = (meanrho > 0.0) ? (Float) (meanrho * mInfo.edens_sigma_threshold) : (Float) 1;
+	LogMsg(VERB_NORMAL,"[pRun paxion] AXITV psp threshold %.3e (mean %.3e, sigma %.2f)",
+		(double) ethres, meanrho, mInfo.edens_sigma_threshold);
+
+	/* mask the energy density in m2 by w(|psi|^2); m2[0..S) is exactly what pRun FFTs */
+	#pragma omp parallel for schedule(static)
+	for (size_t idx=0; idx < S; idx++) {
+		Float rho = m[idx]*m[idx] + v[idx]*v[idx];
+		Float w   = (Float)0.5*((Float)1 - std::tanh((Float)5*(rho/ethres - (Float)1)));
+		m2[idx]  *= w;
+	}
+}
+
 // axion number spectrum
 
 void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
@@ -1091,7 +1135,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 			}
 		break;
 		case SPMASK_AXITV:
-			if (field->m2hStatus() == M2_ENERGY)
+			if (field->Field() == FIELD_PAXION)
+				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXITV (paxion): self-contained |psi|^2 criterion, m2h not required") ;
+			else if (field->m2hStatus() == M2_ENERGY)
 				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXITV ok SPMASK=%d field->m2hStatus()=%d",SPMASK_AXITV,field->m2hStatus()) ;
 			else{
 			LogMsg(VERB_NORMAL,"nRun with SPMASK_AXITV but SPMASK=%d field->m2hStatus()=%d ... EXIT!",SPMASK_AXITV,field->m2hStatus()) ;
@@ -1879,6 +1925,25 @@ void	SpecBin::nRun	(nRunType nrt) {
 			size_t dataLine = field->DataSize()*Ly;
 			size_t Sm	= Ly*Lz;
 
+			/* AXITV (paxion): smooth number-density mask. Same tanh window as the
+			   axion AXITV, but the criterion is the paxion number density
+			   |psi|^2 = m^2 + v^2 (self-contained, no m2half energy map), with
+			   threshold ethres = <|psi|^2> * edens_sigma_threshold. */
+			Float ethres = (Float) 1;
+			if (mask & SPMASK_AXITV) {
+				double localsum = 0.0;
+				#pragma omp parallel for schedule(static) reduction(+:localsum)
+				for (size_t idx=0; idx < field->Size(); idx++)
+					localsum += (double) m[idx]*(double) m[idx] + (double) v[idx]*(double) v[idx];
+				double globalsum = 0.0;
+				MPI_Allreduce(&localsum, &globalsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+				double meanrho = globalsum / (double) field->TotalSize();
+				if (meanrho > 0.0)
+					ethres = (Float) (meanrho * mInfo.edens_sigma_threshold);
+				LogMsg(VERB_NORMAL,"[nRun paxion] AXITV |psi|^2 threshold %.3e (mean %.3e, sigma %.2f)",
+					(double) ethres, meanrho, mInfo.edens_sigma_threshold);
+			}
+
 			if (1)
 			{
 				LogMsg(VERB_HIGH,"[nRun] loop (Paxion)") ;
@@ -1896,16 +1961,13 @@ void	SpecBin::nRun	(nRunType nrt) {
 											m2[2*idx]   = m[idx];
 											m2[2*idx+1] = v[idx];
 										break;
-								// case SPMASK_AXITV:
-								// 			m2[odx] = R2*std::sin(m[idx] * iR2)*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
-								// 		break;
-								// case SPMASK_AXIT:
-								// case SPMASK_AXIT2:
-								// 		if (strdaa[idx] & STRING_MASK)
-								// 				m2[odx] = 0 ;
-								// 		else
-								// 				m2[odx] = R2*std::sin(m[idx] * iR2);
-								// 		break;
+								case SPMASK_AXITV: {
+											/* suppress dense clumps: w -> 0 where |psi|^2 >> ethres */
+											Float ed = m[idx]*m[idx] + v[idx]*v[idx];
+											Float w  = (Float)0.5*((Float)1 - std::tanh((Float)5*(ed/ethres - (Float)1)));
+											m2[2*idx]   = m[idx]*w;
+											m2[2*idx+1] = v[idx]*w;
+										} break;
 							} //end mask
 					}}} // end last volume loop
 
