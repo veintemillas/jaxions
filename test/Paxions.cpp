@@ -28,9 +28,18 @@
 #include "propagator/propPaxXeon.h"
 // #include "propagator/propPaxGpu.h"
 
+#ifdef	USE_GPU
+	#include <cuda.h>
+	#include <cuda_runtime.h>
+	#include <cuda_device_runtime_api.h>
+#endif
 
 using namespace std;
 using namespace AxionWKB;
+
+/* per-step sample of the paxion field at a single tracked point (--idxprint) */
+void   printsample (FILE *fichero, Scalar *axion, size_t idxprint_global);
+size_t unfoldidx   (size_t idx, Scalar *axion);
 
 double find_saturation_ct (Scalar *axion, FILE *file);
 void   find_MC(Scalar *axion, double MC_thr);
@@ -158,6 +167,18 @@ int	main (int argc, char *argv[])
 	LogOut("-----------------------\n");
 	index++;
 	tunePropagator(axion);
+
+	//-output txt file: paxion field sampled every step at the point --idxprint
+	char out2Name[2048];
+	sprintf (out2Name, "%s/../sample.txt", outDir);
+	FILE *file_samp ;
+	file_samp = NULL;
+	if (!restart_flag){
+		file_samp = fopen(out2Name,"w+");
+		fprintf(file_samp, "# ct R axmass Re(psi) Im(psi) |psi|^2\n");
+	} else{
+		file_samp = fopen(out2Name,"a+"); // if restart append in file
+	}
 
 	FILE *file_sat;
 	file_sat = NULL;
@@ -363,6 +384,9 @@ int	main (int argc, char *argv[])
 		propagate (axion, dzaux);
 		//ct_sat = find_saturation_ct(axion, file_sat);
 
+		// SIMPLE OUTPUT CHECK (paxion field at --idxprint, every step)
+		printsample(file_samp, axion, ninfa.idxprint);
+
 
 		if (gravi)
 		{
@@ -492,6 +516,9 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------------------------------------------------------------\n");
 
 	Measureme (axion, ninfa);
+
+	if (file_samp != NULL)
+		fclose(file_samp);
 
 	endAxions();
 
@@ -877,3 +904,95 @@ void find_MC(Scalar *axion, double MC_thr)
 		(*pipar).rhsoff = axion->BckGnd()->ICData().lme_no_rhs;
 
 	}
+
+/* Maps a logical (unfolded) local index to its position in memory. The
+   propagator folds the field on CPU; on GPU the Folder is a no-op so the
+   field is already unfolded and the index is returned unchanged. */
+size_t unfoldidx(size_t idx, Scalar *axion)
+{
+		if (axion->Folded()){
+			size_t X[3];
+			indexXeon::idx2Vec(idx,X,axion->Length());
+			size_t v_length = axion->DataAlign()/axion->DataSize();
+			size_t XC = axion->Length()*v_length;
+			size_t YC = axion->Length()/v_length;
+			size_t iiy = X[1]/YC;
+			size_t iv  = X[1]-iiy*YC;
+			return X[2]*axion->Surf() + iv*XC + X[0]*v_length + iiy;
+		} else
+			return idx;
+}
+
+/* Writes one line per call with the paxion field at a single tracked grid
+   point (global flat index idxprint_global, set with --idxprint):
+
+       ct  R  axmass  Re(psi)  Im(psi)  |psi|^2
+
+   The paxion field is psi = m + i v, with m = mStart() and v = vStart() as two
+   real arrays. Only the rank owning the point writes. On GPU the field lives on
+   the device, so the two values are pulled with cudaMemcpy using the RAW local
+   index (the GPU field is unfolded); note vGpu() has no ghost offset, while the
+   host vStart() does for FIELD_PAXION, so the offset is applied by hand.      */
+void printsample(FILE *fichero, Scalar *axion, size_t idxprint_global)
+{
+	if (fichero == NULL)
+		return;
+
+	double z_now      = (*axion->zV());
+	double R_now      = (*axion->RV());
+	double axmass_now = axion->AxionMass();
+
+	/* rank that owns the point, its local index, and the folded memory slot */
+	size_t zidx      = idxprint_global/axion->Surf();
+	int    rankprint = zidx/axion->Depth();
+	size_t idxprinta = idxprint_global - rankprint*axion->Size();
+	size_t idxp      = unfoldidx(idxprinta, axion);
+
+	LogMsg(VERB_HIGH,"printsample [global idx %lu] [local idx %lu] [folded %lu] from rank %d",
+		idxprint_global, idxprinta, idxp, rankprint);
+
+	if (commRank() != rankprint)
+		return;
+
+	double re = 0., im = 0.;
+
+	if (sPrec == FIELD_SINGLE) {
+		float ref = 0.f, imf = 0.f;
+#ifdef	USE_GPU
+		if (axion->Device() == DEV_GPU) {
+			/* GPU field is unfolded -> raw local index; vGpu() lacks the ghost offset */
+			char *vGpuStart = static_cast<char *>(axion->vGpu())
+			                + axion->DataSize()*axion->Surf()*axion->getNgv();
+			cudaMemcpy(&ref, &(static_cast<float*>(axion->mGpuStart())[idxprinta]),
+				sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(&imf, &(reinterpret_cast<float*>(vGpuStart)[idxprinta]),
+				sizeof(float), cudaMemcpyDeviceToHost);
+		} else
+#endif
+		{
+			ref = static_cast<float *> (axion->mStart())[idxp];
+			imf = static_cast<float *> (axion->vStart())[idxp];
+		}
+		re = (double) ref;  im = (double) imf;
+	} else if (sPrec == FIELD_DOUBLE) {
+#ifdef	USE_GPU
+		if (axion->Device() == DEV_GPU) {
+			char *vGpuStart = static_cast<char *>(axion->vGpu())
+			                + axion->DataSize()*axion->Surf()*axion->getNgv();
+			cudaMemcpy(&re, &(static_cast<double*>(axion->mGpuStart())[idxprinta]),
+				sizeof(double), cudaMemcpyDeviceToHost);
+			cudaMemcpy(&im, &(reinterpret_cast<double*>(vGpuStart)[idxprinta]),
+				sizeof(double), cudaMemcpyDeviceToHost);
+		} else
+#endif
+		{
+			re = static_cast<double *> (axion->mStart())[idxp];
+			im = static_cast<double *> (axion->vStart())[idxp];
+		}
+	} else
+		return;
+
+	fprintf(fichero,"%f %f %f %e %e %e\n", z_now, R_now, axmass_now,
+		re, im, re*re + im*im);
+	fflush(fichero);
+}
