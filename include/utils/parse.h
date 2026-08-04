@@ -38,6 +38,8 @@ extern int    Nng;
 //extern double indi3;
 //extern double msa;
 extern double wDz;
+extern double paxionRatio;
+extern double paxionTime;
 //extern double zthres;
 //extern double zrestore;
 extern size_t nstrings_globale;

@@ -819,6 +819,7 @@ inline void propLinearModeKernelXeon(
 	const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_,
 	const void * __restrict__ g_,
 	const void * __restrict__ k_, const void * __restrict__ k2_,
+	double *epsilon0_, double *epsilon0p_, const bool useEpsilonZeroMode,
 	const PropParms ppar, const double dz, const double c, const double d)
 {
 #ifdef __AVX512F__
@@ -851,11 +852,15 @@ inline void propLinearModeKernelXeon(
 	const double beta = ppar.n;  // Xi =  d log chi / d log T
 	const bool   rhs  = !ppar.rhsoff;  // use the rhs?
 
-	/* save old zero mode background */
+	/* Save the old homogeneous background used by every fluctuation mode. */
 	const double ctheta0  = m[0];
 	const double ctheta0p = v[0];
-	const double theta0   = ctheta0/R;
-	const double thpR     = ctheta0p - ctheta0*Rp;   // Theta' R
+	const double theta0   = useEpsilonZeroMode
+		? std::acos(-1.0) - *epsilon0_
+		: ctheta0/R;
+	const double thpR     = useEpsilonZeroMode
+		? -R*(*epsilon0p_)
+		: ctheta0p - ctheta0*Rp;   // Theta' R
 
 	const double mR2c = mA2*R*R*cos(theta0);
 	const double mR2s = mA2*R*R*R*sin(theta0);
@@ -950,6 +955,27 @@ inline void propLinearModeKernelXeon(
 
 		opCode(store_pd, &v[i],  vnew);
 		opCode(store_pd, &m2[i], mnew);
+	}
+
+	/*
+	 * Evolve epsilon0 = pi-theta0 separately.  Centring the Hubble-friction
+	 * term on the velocity kick gives
+	 *
+	 *   v+ = [(1-H h)/(1+H h)] v- + h a/(1+H h),
+	 *
+	 * with a = m_a^2 R^2 sin(epsilon0).  The caller synchronizes the legacy
+	 * psi0 and psi0' slots after advancing the stage time and scale factor.
+	 */
+	if (useEpsilonZeroMode)
+	{
+		const double kick = dzc;
+		const double denominator = 1.0 + Rp*kick;
+		const double acceleration = mA2*R*R*std::sin(*epsilon0_);
+		const double epsilonVelocity =
+			((1.0 - Rp*kick)*(*epsilon0p_) + kick*acceleration)
+			/ denominator;
+		*epsilon0p_ = epsilonVelocity;
+		*epsilon0_ += dzd*epsilonVelocity;
 	}
 
 // 	#pragma omp parallel for schedule(static)

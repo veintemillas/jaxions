@@ -1,5 +1,97 @@
 #JAXIONS MODULE TO RUN SIMULATIONS FROM PYTHON
 import os, re, shlex
+from collections.abc import Mapping
+
+
+def _command_option_tokens(options):
+    """Convert a mapping, shell string, or iterable into command-line tokens."""
+    if options is None:
+        return []
+    if isinstance(options, str):
+        return shlex.split(options)
+    if isinstance(options, Mapping):
+        tokens = []
+        for name, value in options.items():
+            flag = str(name)
+            if not flag.startswith('-'):
+                flag = '--' + flag.replace('_', '-')
+            if value is False or value is None:
+                continue
+            tokens.append(flag)
+            if value is not True:
+                if isinstance(value, (list, tuple)):
+                    tokens.extend(str(item) for item in value)
+                else:
+                    tokens.append(str(value))
+        return tokens
+    return [str(token) for token in options]
+
+
+def kini_command(fA, theta_i, vtheta_i, tau_i, tau_f, N, Lsize, *,
+                 ranks=1, threads=1, executable='kini', launcher='mpirun',
+                 launcher_options=None, device='gpu', steps=10_000_000,
+                 wDz=0.1, dump=100, measurement=None,
+                 propagator_options=None, measfile=None, extra_options=None):
+    """
+    Return (but do not execute) a shell command for a ``kini`` simulation.
+
+    ``theta_i`` and ``vtheta_i`` are written to ``ic.dat`` by the returned
+    command. With no ``measfile``, spatial measurements use ``--dump``.
+    Supplying ``measfile`` copies it to ``measfile.dat``, whose schedule then
+    takes precedence inside ``kini``.
+
+    ``measurement``, ``propagator_options``, and ``extra_options`` accept a
+    mapping, a shell-style string, or an iterable of command-line tokens.
+    Mapping keys may be written either as ``"meas"`` or ``"--meas"``.
+    """
+    if fA <= 0:
+        raise ValueError('fA must be positive')
+    if tau_i <= 0 or tau_f <= tau_i:
+        raise ValueError('require 0 < tau_i < tau_f')
+    if N <= 0 or ranks <= 0 or N % ranks:
+        raise ValueError('N must be positive and divisible by ranks')
+    if Lsize <= 0 or steps <= 0 or wDz <= 0:
+        raise ValueError('Lsize, steps, and wDz must be positive')
+    if threads <= 0 or dump <= 0:
+        raise ValueError('threads and dump must be positive')
+
+    program = [
+        str(executable),
+        '--qcd', 'qcd',
+        '--fA', str(fA),
+        '--size', str(N),
+        '--depth', str(N//ranks),
+        '--zgrid', str(ranks),
+        '--lsize', str(Lsize),
+        '--zi', str(tau_i),
+        '--zf', str(tau_f),
+        '--steps', str(steps),
+        '--wDz', str(wDz),
+        '--device', str(device),
+        '--prec', 'double',
+        '--prop', 'rkn4',
+        '--dump', str(dump),
+    ]
+    program.extend(_command_option_tokens(measurement))
+    program.extend(_command_option_tokens(propagator_options))
+    program.extend(_command_option_tokens(extra_options))
+
+    command = ['env', 'OMP_NUM_THREADS=' + str(threads)]
+    if launcher:
+        command.append(str(launcher))
+        command.extend(_command_option_tokens(launcher_options))
+        if os.path.basename(str(launcher)) in ('mpirun', 'mpiexec'):
+            command.extend(['-np', str(ranks)])
+    command.extend(program)
+
+    setup = [
+        shlex.join(['printf', '%s %s\\n', str(theta_i), str(vtheta_i)])
+        + ' > ic.dat'
+    ]
+    if measfile is not None and os.fspath(measfile) != 'measfile.dat':
+        setup.append(shlex.join(['cp', os.fspath(measfile), 'measfile.dat']))
+
+    return ' && '.join(setup + [shlex.join(command)])
 
 
 def _slurm_preamble(slurm, ranks, threads):

@@ -76,6 +76,8 @@
 		//Aux data
 		void *m_a  = nullptr, *v_a  = nullptr, *m2_a = nullptr;
 		void *k_a  = nullptr, *k2_a = nullptr, *g_a  = nullptr;
+		// Hilltop-safe homogeneous mode: epsilon0 = pi-theta0.
+		double epsilon0 = 0.0, epsilon0p = 0.0;
 
 #ifdef	USE_GPU
 		void	*m_d, *v_d, *m2_d;				// Gpu data
@@ -145,6 +147,10 @@
 		const void	*k_Cpu() const { return k_a; }
 		void		*k2_Cpu()  { return k2_a; }
 		const void	*k2_Cpu() const { return k2_a; }
+		double		*epsilonV()  { return &epsilon0; }
+		const double	*epsilonV() const { return &epsilon0; }
+		double		*epsilonPV() { return &epsilon0p; }
+		const double	*epsilonPV() const { return &epsilon0p; }
 		size_t		NModes ()  { return nmodes; }
 		void	setNModes	(size_t niw) {nmodes = niw;} ;
 

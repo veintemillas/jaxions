@@ -1220,6 +1220,8 @@ template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 	double *z  = axion->zV();
 	double *cD = d;
+	// Hard-coded for now; set false to recover the legacy psi0 evolution.
+	constexpr bool useEpsilonZeroMode = true;
 
 	PropParms ppar;
 
@@ -1232,16 +1234,38 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 		loadparms(&ppar, axion);
 
 		propLinearModeKernelXeon(axion->m_aCpu(), axion->v_aCpu(), axion->m2_aCpu(),
-		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(),ppar, dz, c1, d1);
+		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(),
+		axion->epsilonV(), axion->epsilonPV(), useEpsilonZeroMode,
+		ppar, dz, c1, d1);
 		*z += dz*d1;
 		axion->updateR();
+		if (useEpsilonZeroMode)
+		{
+			const double theta0 = std::acos(-1.0) - *axion->epsilonV();
+			const double theta0p = -*axion->epsilonPV();
+			const double R = *axion->RV();
+			const double H = axion->BckGnd()->Rp(*z);
+			static_cast<double*>(axion->m2_aCpu())[0] = R*theta0;
+			static_cast<double*>(axion->v_aCpu())[0] = R*(theta0p + H*theta0);
+		}
 
 		loadparms(&ppar, axion);
 
 		propLinearModeKernelXeon(axion->m2_aCpu(), axion->v_aCpu(), axion->m_aCpu(),
-		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(), ppar, dz, c2, d2);
+		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(),
+		axion->epsilonV(), axion->epsilonPV(), useEpsilonZeroMode,
+		ppar, dz, c2, d2);
 		*z += dz*d2;
 		axion->updateR();
+		if (useEpsilonZeroMode)
+		{
+			const double theta0 = std::acos(-1.0) - *axion->epsilonV();
+			const double theta0p = -*axion->epsilonPV();
+			const double R = *axion->RV();
+			const double H = axion->BckGnd()->Rp(*z);
+			static_cast<double*>(axion->m_aCpu())[0] = R*theta0;
+			static_cast<double*>(axion->v_aCpu())[0] = R*(theta0p + H*theta0);
+		}
 	}
 }
 

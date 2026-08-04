@@ -1262,13 +1262,15 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 		mopa.ct    = eta;
 		mopa.mocoty = MOM_KM;          // specific filling modes
 		mopa.mfttab = mm;              // table of mode amplitudes
+		if (km_use_mv_a_data)
+			mopa.vfttab = vv;          // evolved mode velocities at the same time
 		mopa.k0     = vv[0];           // amplitude of 0-mode velocity
 		mopa.cmplx = false;            // we will do R2C
 		mopa.randommom = ic.randommom; // amplitudes/phases randomised
 		mopa.mp = axionField->m2Cpu(); // for ctheta
 		mopa.vp = axionField->vCpu();  // for ctheta'
-		if (ic.mode0 > 0)
-			mopa.setmom0 = true;       // don't randomise 0 modes
+		if (km_use_mv_a_data || ic.mode0 > 0)
+			mopa.setmom0 = true;       // preserve an evolved or explicitly fixed 0 mode
 
 	momConf(axionField, mopa);
 
@@ -1349,7 +1351,13 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 		double *gfield = static_cast<double*>(axionField->g_aCpu());
 
 
-		double VEL1 = vv0[0]-mm0[0];
+		const bool physicalKmIC = myCosmos->ICData().km_ic_physical;
+		const double Rini = *axionField->RV();
+		const double Hini = axionField->BckGnd()->Rp(*axionField->zV());
+		const double thetaPrime1 = physicalKmIC ? vv0[0] : vv0[0]-mm0[0];
+		const double VEL1 = physicalKmIC
+			? (Hini != 0.0 ? Rini*thetaPrime1/Hini : 0.0)
+			: thetaPrime1;
 		double w,C,S,phik0;
 
 		/* Version with Unnormalised modes */
@@ -1414,6 +1422,8 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 				gfield[i] = phik0;
 				cfield[i] = -0.5*VEL1*C*phik0;
 				cvield[i] = -0.5*VEL1*S*phik0*w;
+				if (physicalKmIC)
+					cvield[i] += Hini*cfield[i];
 
 				// approximation
 				accu += cfield[i]*cfield[i]*4*3.14159*i*i;
@@ -1423,9 +1433,29 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 							 "[GENKM] set mode %zu k %.3e m %.3e v %.3e g %.3e",
 							 i, k_[i], cfield[i], cvield[i], gfield[i]);
 			}
-			cfield[0] = mm0[0];
-			cvield[0] = vv0[0];
+			if (physicalKmIC)
+			{
+				cfield[0] = Rini*mm0[0];
+				cvield[0] = Rini*(vv0[0] + Hini*mm0[0]);
+			}
+			else
+			{
+				cfield[0] = mm0[0];
+				cvield[0] = vv0[0];
+			}
 			gfield[0] = 0.0;
+
+			/*
+			 * Keep an independent representation of the homogeneous mode.
+			 * Near the hilltop, deriving theta0' from psi0'-H*psi0 loses
+			 * precision through cancellation.  The mode propagator therefore
+			 * evolves epsilon0 = pi-theta0 and epsilon0' directly.
+			 */
+			const double thetaZero = cfield[0]/Rini;
+			const double thetaPrimeZero =
+				(cvield[0] - Hini*cfield[0])/Rini;
+			*axionField->epsilonV() = std::acos(-1.0) - thetaZero;
+			*axionField->epsilonPV() = -thetaPrimeZero;
 
 			/* check fluctuations
 			calculate directly from m,v fields and from cfield,vfield*/

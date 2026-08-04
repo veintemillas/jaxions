@@ -31,6 +31,14 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		LogMsg(VERB_NORMAL,"[momXeon] non-random momenta (fixed with --norandommom or others...)");
 
 	std::vector<double> 	mm = mopa.mfttab;
+	std::vector<double> 	vv = mopa.vfttab;
+	const bool evolvedModes = !vv.empty();
+	if (evolvedModes && vv.size() != mm.size())
+	{
+		LogError("[momXeon] MOM_KM field and velocity tables have different sizes (%zu != %zu)",
+		         mm.size(), vv.size());
+		exit(1);
+	}
 	std::vector<double> 	ii;
 	tk::spline mf;
 
@@ -166,20 +174,35 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 											fM[idx]  = marsa*((Float) (c0+(c1-c0)*(sc-b)));
 										}
 									break;
-									case(MOM_KM):
-										{
-											double sc   = (Float) sqrt(modP);
-											Float w = (Float) sqrt(modP*kcrit+m2);
-											Float phase = w * ct;
-											Float C = cos(phase);
-											Float S = -sin(phase);
-											int b    = (int) sc;
-											Float c0 = mm[b];
-											Float c1 = mm[b+1];
-											complex<Float> AA = marsa*((Float) (c0+(c1-c0)*(sc-b)));
-											fM[idx]  = AA*C;
-											fV[idx]  = w*AA*S;
-										}
+										case(MOM_KM):
+											{
+												double sc   = (Float) sqrt(modP);
+												int b    = (int) sc;
+												Float c0 = mm[b];
+												Float c1 = mm[b+1];
+												Float cm = (Float) (c0+(c1-c0)*(sc-b));
+
+												if (evolvedModes)
+												{
+													// The radial modes have already been evolved to ct.
+													// Interpolate both phase-space coordinates and give
+													// them the same random Fourier phase.
+													Float v0 = vv[b];
+													Float v1 = vv[b+1];
+													Float cv = (Float) (v0+(v1-v0)*(sc-b));
+													fM[idx] = marsa*cm;
+													fV[idx] = marsa*cv;
+												}
+												else
+												{
+													// Initial-spectrum path: mm is an unevolved
+													// amplitude table, so construct its free phase.
+													Float w = (Float) sqrt(modP*kcrit+m2);
+													Float phase = w * ct;
+													fM[idx] = marsa*cm*cos(phase);
+													fV[idx] = marsa*cm*w*(-sin(phase));
+												}
+											}
 									break;
 									case(MOM_MSIN):
 										{
@@ -236,6 +259,14 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 							} // END if
 							else {
 								fM[idx] = complex<Float>(0,0);
+								/*
+								 * MOM_KM constructs both phase-space fields.
+								 * Leaving fV untouched outside the spherical
+								 * cutoff injects uninitialised velocity modes
+								 * into the few Fourier-cube corner bins.
+								 */
+								if (Moco == MOM_KM || Moco == MOM_MVSINCOS)
+									fV[idx] = complex<Float>(0,0);
 							}
 						break;
 

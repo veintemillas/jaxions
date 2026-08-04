@@ -925,6 +925,7 @@
 			bool          linmodevol;
 			bool          lme_no_rhs;
 			bool          km_use_mv_a_data;
+			bool          km_ic_physical = false;
 		}	IcData;
 
 		typedef	struct	MomParms_v
@@ -937,6 +938,7 @@
 			double        ct;
 			FieldType     ftype;
 			std::vector<double>     mfttab;
+			std::vector<double>     vfttab;
 			bool 	      cmplx;
 			bool          randommom = true;
 			bool          setmom0   = false;

@@ -29,6 +29,8 @@ double indi3  = 1.0;
 double msa    = 1.5;
 double lz2e   = 0.0;
 double wDz    = 0.8;
+double paxionRatio = 1.0;
+double paxionTime  = -1.0;
 int    fIndex = -1;
 int    fIndex2 = 0;
 int    slicepp = 0;
@@ -299,6 +301,8 @@ void	PrintUsage(char *name)
 	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
 	printf("  --zi    [float]               Initial value of the conformal time z (default 0.5).\n");
 	printf("  --zf    [float]               Final value of the conformal time z (default 1.0).\n");
+	printf("  --paxionratio [float]         kini: theta->paxion when kmax/(m_a R) is below this value (default 1; 0 disables).\n");
+	printf("  --paxiontime  [float]         kini: force theta->paxion at this conformal time (default disabled).\n");
 	printf("  --Rc    [float]               Critical value of scale factor R, (mass_A^2 = constant for R>Rc) (default 1.e5).\n");
 	printf("  --lsize [float]               Physical size of the system (default 4.0).\n");
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
@@ -715,6 +719,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.smvarType = CONF_RAND;
 	icdatst.mocoty    = MOM_MEXP2;
 	icdatst.randommom = true;
+	icdatst.km_ic_physical = false;
 	icdatst.fieldindex=FIELD_NO;
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
@@ -1719,6 +1724,38 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--paxionratio"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the paxion nonrelativistic threshold.\n");
+				exit(1);
+			}
+			paxionRatio = atof(argv[i+1]);
+			if (paxionRatio < 0.0)
+			{
+				printf("Error: --paxionratio must be non-negative.\n");
+				exit(1);
+			}
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--paxiontime"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a conformal time for the paxion transition.\n");
+				exit(1);
+			}
+			paxionTime = atof(argv[i+1]);
+			if (paxionTime <= 0.0)
+			{
+				printf("Error: --paxiontime must be positive.\n");
+				exit(1);
+			}
 			PARSE2;
 		}
 
@@ -3037,6 +3074,8 @@ Cosmos	createCosmos()
 		myCosmos.SetMink    (mink);
 		myCosmos.SetUeC     (uexCosm);
 		myCosmos.SetFA      (fA);
+		myCosmos.SetFAT     (ufat);
+		myCosmos.SetMAa     (msa);
 	}
 
 	return	myCosmos;

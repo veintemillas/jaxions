@@ -225,9 +225,65 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		// printf("dlog %.2f\n",axiona->BckGnd()->DlogCHIlogT(*axiona->zV()));
 		writeArray(static_cast<double*>(axiona->m_aCpu()), axiona->NModes(), "/modes", "ctheta");
 		writeArray(static_cast<double*>(axiona->v_aCpu()), axiona->NModes(), "/modes", "cvheta");
+		writeArray(axiona->epsilonV(), 1, "/modes", "epsilon");
+		writeArray(axiona->epsilonPV(), 1, "/modes", "epsilonprime");
 		if (indexa == 0){
-				LogMsg(VERB_HIGH, "[Meas %d] Linear mode k's",indexa);
-				writeArray(static_cast<double*>(axiona->k_Cpu()), axiona->NModes(), "/modes", "k");
+			LogMsg(VERB_HIGH, "[Meas %d] Linear mode k's",indexa);
+			writeArray(static_cast<double*>(axiona->k_Cpu()), axiona->NModes(), "/modes", "k");
+
+			/*
+			 * Linear-mode fields do not have a spatial FFT grid on which
+			 * SpecBin can run.  Nevertheless, analysis tools expect the
+			 * first measurement to contain the same mode-count and average-k
+			 * metadata as vaxions.  Build those arrays directly from the
+			 * spatial grid represented by the radial modes.
+			*/
+			const size_t gridSize = axiona->BckGnd()->ICData().Nx;
+			const double halfGrid = double(gridSize/2);
+			const size_t naturalBins =
+				static_cast<size_t>(std::floor(std::sqrt(3.0*halfGrid*halfGrid))) + 1;
+			const size_t binCount = info.nbinsspec < 0
+				? naturalBins : static_cast<size_t>(info.nbinsspec);
+			const double binMultiplier = double(binCount)/double(naturalBins);
+			std::vector<double> modeCount(binCount, 0.0);
+			std::vector<double> averageK(binCount, 0.0);
+
+			#pragma omp parallel
+			{
+				std::vector<double> localCount(binCount, 0.0);
+				std::vector<double> localAverageK(binCount, 0.0);
+
+				#pragma omp for collapse(3) nowait
+				for (size_t ix = 0; ix < gridSize; ix++)
+				for (size_t iy = 0; iy < gridSize; iy++)
+				for (size_t iz = 0; iz < gridSize; iz++)
+				{
+					const int nx = (ix <= gridSize/2) ? int(ix) : int(ix)-int(gridSize);
+					const int ny = (iy <= gridSize/2) ? int(iy) : int(iy)-int(gridSize);
+					const int nz = (iz <= gridSize/2) ? int(iz) : int(iz)-int(gridSize);
+					const double k2 = double(nx*nx + ny*ny + nz*nz);
+					const size_t bin =
+						static_cast<size_t>(std::floor(binMultiplier*std::sqrt(k2)));
+
+					if (bin < binCount)
+					{
+						localCount[bin] += 1.0;
+						localAverageK[bin] += k2;
+					}
+				}
+
+				#pragma omp critical
+				{
+					for (size_t bin = 0; bin < binCount; bin++)
+					{
+						modeCount[bin] += localCount[bin];
+						averageK[bin] += localAverageK[bin];
+					}
+				}
+			}
+
+			writeArray(modeCount.data(), binCount, "/nSpectrum", "nmodes");
+			writeArray(averageK.data(), binCount, "/nSpectrum", "averagek");
 		}
 
 	}
@@ -1178,5 +1234,3 @@ MeasData	Measureme  (Scalar *axiona,  MeasInfo infa)
 double xivilgor(double logi){
 	return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
 }
-
-

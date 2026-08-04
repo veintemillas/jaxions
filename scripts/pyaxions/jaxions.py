@@ -284,6 +284,21 @@ def gm(address,something='summary',printerror=False):
 
     f = h5py.File(address, 'r')
 
+    # Generic existence queries.  Keep the established semantic queries
+    # (nsp?, bintheta?, ...) below, but allow arbitrary HDF5 data and
+    # attribute paths to be checked without attempting to read them.
+    if something.startswith('da') and something.endswith('?'):
+        return something[2:-1] in f
+
+    if something.startswith('at') and something.endswith('?'):
+        attribute_path = something[2:-1]
+        split = attribute_path.rfind('/')
+        if split < 0:
+            return attribute_path in f.attrs
+        group_path = attribute_path[:split] or '/'
+        attribute = attribute_path[split+1:]
+        return group_path in f and attribute in f[group_path].attrs
+
     # generic attribute: something = 'at/nombre'
     if (something[:2] == 'at'):
         esp = something[2:]
@@ -1100,6 +1115,11 @@ def gm(address,something='summary',printerror=False):
     if something == 'summary':
         print_h5_structure(f)
         return;
+
+    # Generic fallback for any otherwise unknown request ending in '?'.
+    # Both 'group/data?' and '/group/data?' are accepted by h5py.
+    if something.endswith('?'):
+        return something[:-1] in f
 
     print('Argument %s not recognised/found!'%(something))
     return ;
