@@ -47,13 +47,15 @@ void fillMode(Scalar *field, size_t zMode, size_t rhoMode,
 		for (size_t iz = 0; iz < Nz; ++iz) {
 			const size_t id = irho*Nz + iz;
 			const double z = double(iz)*delta;
+			const double theta = amplitude*std::sin(kz*z)*radial;
 			const double thetaDot = amplitude*std::sin(kz*z)*radial;
 
-			/* phi=1 and phidot=i*thetaDot give exactly the requested thetaDot. */
-			m[2*id] = Float(1);
-			m[2*id + 1] = Float(0);
-			v[2*id] = Float(0);
-			v[2*id + 1] = Float(thetaDot);
+			/* Unit modulus with phidot=i*thetaDot*phi makes both the kinetic
+			 * and complex-field gradient quotients analytic. */
+			m[2*id] = Float(std::cos(theta));
+			m[2*id + 1] = Float(std::sin(theta));
+			v[2*id] = Float(-thetaDot*std::sin(theta));
+			v[2*id + 1] = Float(thetaDot*std::cos(theta));
 		}
 	}
 }
@@ -187,9 +189,9 @@ std::vector<Mode> readModes()
 	return modes;
 }
 
-Peak findPeak(const SpecBin &spectrum)
+Peak findPeak(const SpecBin &spectrum, SpectrumType type)
 {
-	const double *bins = spectrum.data(SPECTRUM_KK);
+	const double *bins = spectrum.data(type);
 	const size_t count = spectrum.NBins();
 	const auto peak = std::max_element(bins, bins + count);
 	return {size_t(peak - bins), *peak,
@@ -205,21 +207,26 @@ bool runCase(Scalar *field, MeasInfo info, const char *name,
 	SpecBin spectrum(field, false, info);
 	MPI_Barrier(MPI_COMM_WORLD);
 	const double spectrumStart = MPI_Wtime();
-	spectrum.nRun(SPMASK_FLAT, NRUN_K);
+	spectrum.nRun(SPMASK_FLAT, NRUN_KG);
 	const double spectrumTime = maximumRankTime(MPI_Wtime() - spectrumStart);
 	const double r2cTime = benchmarkR2C<Float>(field->TZ(), field->NX());
-	const Peak peak = findPeak(spectrum);
+	const Peak kineticPeak = findPeak(spectrum, SPECTRUM_KK);
+	const Peak gradientPeak = findPeak(spectrum, SPECTRUM_GG);
 
 	const double expectedKOverK0 = std::hypot(
 		0.5*double(zMode),
 		0.5*double(rhoMode)*double(field->NX())/double(field->TZ()));
 	const size_t expectedBin = size_t(std::floor(expectedKOverK0));
-	const double leakage = peak.total > 0.0 ? 1.0 - peak.value/peak.total : 1.0;
+	const double kineticLeakage = kineticPeak.total > 0.0
+		? 1.0 - kineticPeak.value/kineticPeak.total : 1.0;
+	const double gradientLeakage = gradientPeak.total > 0.0
+		? 1.0 - gradientPeak.value/gradientPeak.total : 1.0;
 
 	if (commRank() == 0)
-		LogMsg(VERB_HIGH, "[cyl-spectrum-test] %-12s expected-bin=%zu peak-bin=%zu "
-		       "peak=%.8e total=%.8e leakage=%.6f",
-		       name, expectedBin, peak.bin, peak.value, peak.total, leakage);
+		LogMsg(VERB_HIGH, "[cyl-spectrum-test] %-12s expected-bin=%zu "
+		       "K-bin=%zu K-leak=%.6f G-bin=%zu G-leak=%.6f",
+		       name, expectedBin, kineticPeak.bin, kineticLeakage,
+		       gradientPeak.bin, gradientLeakage);
 	if (commRank() == 0 && r2cTime > 0.0)
 		LogMsg(VERB_HIGH, "[cyl-spectrum-test] timing grid=%zux%zu ranks=%d threads=%d: "
 		       "cyl-spectrum=%.6e s fftw-mpi-r2c=%.6e s ratio=%.3f",
@@ -227,8 +234,10 @@ bool runCase(Scalar *field, MeasInfo info, const char *name,
 		       r2cTime, spectrumTime/r2cTime);
 
 	/* Finite radial truncation spreads power; this is a debugging sanity check. */
-	return std::isfinite(peak.total) && peak.total > 0.0 &&
-		std::abs(long(peak.bin) - long(expectedBin)) <= 2;
+	return std::isfinite(kineticPeak.total) && kineticPeak.total > 0.0 &&
+		std::isfinite(gradientPeak.total) && gradientPeak.total > 0.0 &&
+		std::abs(long(kineticPeak.bin) - long(expectedBin)) <= 2 &&
+		std::abs(long(gradientPeak.bin) - long(expectedBin)) <= 2;
 }
 
 } // namespace
@@ -243,7 +252,7 @@ int main(int argc, char **argv)
 	MeasInfo info = deninfa;
 	info.nbinsspec = -1;
 	info.mask = SPMASK_FLAT;
-	info.nrt = NRUN_K;
+	info.nrt = NRUN_KG;
 	const auto modes = readModes();
 
 	bool ok = !modes.empty();

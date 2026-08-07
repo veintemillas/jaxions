@@ -4,6 +4,7 @@ from pyaxions import jaxions as pa
 
 from scipy.integrate import quad
 from scipy.interpolate import CubicSpline
+from scipy.special import j0, jn_zeros
 
 import importlib, os, pickle, h5py, subprocess, timeit
 
@@ -15,7 +16,9 @@ from IPython.display import clear_output
 # ---------------------------------------------------------------------------
 
 def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
-         gpu=False, verb=0, options='', outdir=None, Nz=-1, amr = 1.0):
+         gpu=False, verb=0, options='', outdir=None, Nz=-1, amr=1.0,
+         ic='loop', kz_mode=1, krho_mode=0, wave_amplitude=0.1,
+         rho_cutoff=None, z_cutoff=None, rho_center=0.0, z_center=None):
     '''simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
             gpu=False, verb=0, options='', outdir=None)
 
@@ -40,6 +43,16 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     n_save   : approximate number of measurements before collapse
     rescale  : create ICs at 1/rescale resolution, then run at full N
                (keep at 1 for now to avoid problems)
+    ic       : 'loop' for the usual string loop; 'kz' or 'krho' for a pure
+               standing axion wave
+    kz_mode  : positive integer z-mode used when ic='kz'
+    krho_mode : non-negative radial J0 mode used when ic='krho'; zero is
+                 radially uniform
+    wave_amplitude : phase amplitude A in radians for either wave IC
+    rho_cutoff : optional Gaussian e-folding radius for wave ICs
+    z_cutoff : optional Gaussian e-folding distance from the z midpoint
+    rho_center : centre of the radial Gaussian; defaults to the axis
+    z_center : centre of the axial Gaussian; defaults to (Nz-1)/2
     '''
     if plota:
         print('Simulation')
@@ -56,8 +69,23 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     if plota:
         print('Creation with Nrho, Nz, R, msa =', N_create, Nz_create, R_create, msa_create)
 
-    theta = thetaics(N_create, Nz_create, R_create, plota=plota, readIC=True)
-    phi   = phiics(theta, msa_create)
+    if ic == 'loop':
+        theta = thetaics(N_create, Nz_create, R_create,
+                         plota=plota, readIC=True)
+        phi = phiics(theta, msa_create)
+    elif ic == 'kz':
+        phi = kz_wave_ics(N_create, Nz_create, mode=kz_mode,
+                          amplitude=wave_amplitude, rho_cutoff=rho_cutoff,
+                          z_cutoff=z_cutoff, rho_center=rho_center,
+                          z_center=z_center, plota=plota)
+    elif ic == 'krho':
+        phi = krho_wave_ics(N_create, Nz_create, mode=krho_mode,
+                            kz_mode=kz_mode, amplitude=wave_amplitude,
+                            rho_cutoff=rho_cutoff, z_cutoff=z_cutoff,
+                            rho_center=rho_center, z_center=z_center,
+                            plota=plota)
+    else:
+        raise ValueError("ic must be 'loop', 'kz', or 'krho'")
 
     # Build and run ICs-only step (creates the HDF5 skeleton)
     # in jaxions, we permute, fast axis is z, slow is rho
@@ -714,6 +742,123 @@ def rhof_fit(x, a, b, c, d, kappa=0.5):
 def rhof(x):
     '''Radial profile rho(r) for a straight string (r in units of 1/ms). chati'''
     return rhof_fit(x, a=4.10687112e-01,b=3.02701871e-12,c=3.01917484e-02,d=4.69463456e-03, kappa=0.5)
+
+
+def _wave_envelope(nrh, nz, rho_cutoff=None, z_cutoff=None,
+                   rho_center=0.0, z_center=None):
+    '''Return a smooth separable envelope for cylindrical wave tests.'''
+    envelope = np.ones((nz, nrh), dtype=np.float64)
+    if rho_cutoff is not None:
+        if not np.isfinite(rho_cutoff) or rho_cutoff <= 0:
+            raise ValueError('rho_cutoff must be None or a positive finite number')
+        if not np.isfinite(rho_center):
+            raise ValueError('rho_center must be finite')
+        rho = np.arange(nrh, dtype=np.float64)
+        envelope *= np.exp(-((rho-rho_center)/rho_cutoff)**2)[None, :]
+    if z_cutoff is not None:
+        if not np.isfinite(z_cutoff) or z_cutoff <= 0:
+            raise ValueError('z_cutoff must be None or a positive finite number')
+        if z_center is not None and not np.isfinite(z_center):
+            raise ValueError('z_center must be None or finite')
+        z = np.arange(nz, dtype=np.float64)
+        center = 0.5*(nz - 1) if z_center is None else z_center
+        envelope *= np.exp(-((z-center)/z_cutoff)**2)[:, None]
+    return envelope
+
+
+def kz_wave_ics(nrh, nz, mode=1, amplitude=0.1, rho_cutoff=None,
+                z_cutoff=None, rho_center=0.0, z_center=None, plota=False):
+    '''Build a pure standing axion wave, uniform in rho.
+
+    theta(rho,z) = amplitude*sin(pi*mode*z/(nz-1)) and theta_dot=0.
+    The sine basis respects the odd/conjugate z identification used by the
+    cylindrical field.  Starting at maximum displacement makes the initial
+    wave energy purely gradient, so K/G exchange is an especially clean test.
+    '''
+    if nrh < 1 or nz < 2:
+        raise ValueError('kz wave requires nrh >= 1 and nz >= 2')
+    if int(mode) != mode or mode < 1 or mode >= nz - 1:
+        raise ValueError('kz_mode must be an integer in [1, nz-2]')
+    if not np.isfinite(amplitude):
+        raise ValueError('wave_amplitude must be finite')
+
+    z = np.arange(nz, dtype=np.float64)
+    kz = np.pi * int(mode) / (nz - 1)
+    theta_z = amplitude * np.sin(kz * z)
+    theta = np.broadcast_to(theta_z[:, None], (nz, nrh)).copy()
+    theta *= _wave_envelope(nrh, nz, rho_cutoff, z_cutoff,
+                            rho_center, z_center)
+
+    phi = np.empty((nz, nrh, 2), dtype=np.float64)
+    phi[:, :, 0] = np.cos(theta)
+    phi[:, :, 1] = np.sin(theta)
+
+    if plota:
+        print('Pure kz standing wave: mode=%d, kz=%.8g, amplitude=%.8g, '
+              'rho_cutoff=%s, rho_center=%s, z_cutoff=%s, z_center=%s'
+              % (mode, kz, amplitude, rho_cutoff, rho_center,
+                 z_cutoff, z_center))
+    return phi
+
+
+def krho_wave_number(nrh, mode=0):
+    '''Return the radial wavenumber for a J0 mode with the jaxions BC.
+
+    The outer cylindrical ghost cell is filled with the last physical value,
+    ``phi[nrh] = phi[nrh-1]``.  This is a cell-face Neumann condition located
+    at rho = nrh - 1/2 (for dx=1), rather than at the centre of the last site.
+    Placing a zero of J1 there makes d_rho J0(k*rho) vanish at the physical
+    boundary.
+    '''
+    if nrh < 2:
+        raise ValueError('krho wave requires nrh >= 2')
+    if int(mode) != mode or mode < 0:
+        raise ValueError('krho_mode must be a non-negative integer')
+    if mode == 0:
+        return 0.0
+
+    outer_face = nrh - 0.5
+    return jn_zeros(1, int(mode))[-1] / outer_face
+
+
+def krho_wave_ics(nrh, nz, mode=0, kz_mode=1, amplitude=0.1,
+                  rho_cutoff=None, z_cutoff=None, rho_center=0.0,
+                  z_center=None, plota=False):
+    '''Build a separable cylindrical standing axion wave.
+
+    theta(rho,z) = amplitude*J0(k_rho*rho)*sin(k_z*z), with theta_dot=0.
+    Radial mode zero gives k_rho=0; positive radial modes place the selected
+    zero of J1 at rho=nrh-1/2.  The sine factor obeys the conjugate-reflection
+    boundary at z=0.  Defaults (mode, kz_mode)=(0, 1).
+    '''
+    if nrh < 2 or nz < 1:
+        raise ValueError('krho wave requires nrh >= 2 and nz >= 1')
+    if int(kz_mode) != kz_mode or kz_mode < 1 or kz_mode >= nz - 1:
+        raise ValueError('kz_mode must be an integer in [1, nz-2]')
+    if not np.isfinite(amplitude):
+        raise ValueError('wave_amplitude must be finite')
+
+    rho = np.arange(nrh, dtype=np.float64)
+    krho = krho_wave_number(nrh, mode)
+    theta_rho = amplitude * j0(krho * rho)
+    z = np.arange(nz, dtype=np.float64)
+    kz = np.pi * int(kz_mode) / (nz - 1)
+    theta = np.sin(kz*z)[:, None] * theta_rho[None, :]
+    theta *= _wave_envelope(nrh, nz, rho_cutoff, z_cutoff,
+                            rho_center, z_center)
+
+    phi = np.empty((nz, nrh, 2), dtype=np.float64)
+    phi[:, :, 0] = np.cos(theta)
+    phi[:, :, 1] = np.sin(theta)
+
+    if plota:
+        print('Cylindrical standing wave: krho_mode=%d, kz_mode=%d, '
+              'krho=%.8g, kz=%.8g, amplitude=%.8g, '
+              'rho_cutoff=%s, rho_center=%s, z_cutoff=%s, z_center=%s'
+              % (mode, kz_mode, krho, kz, amplitude,
+                 rho_cutoff, rho_center, z_cutoff, z_center))
+    return phi
+
 
 def phiics(theta, msa):
     '''Build phi = rho * exp(i*theta) with rho minimising the EOM.'''

@@ -245,19 +245,22 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 
 									alignas(Align) double bxWrap[2*step];
 									alignas(Align) double bxOut [2*step];
-									alignas(Align) double bxMel [2*step];
 
 									const size_t idxWrap = ((zC*Nx + jWrap*step) << 1);
 									opCode(store_pd, bxWrap, opCode(load_pd, &m[idxWrap]));
-									opCode(store_pd, bxMel, mel);
 
 									for (size_t q = 0; q < Nc; q++) {
 										const uint xq = j + q*Sfold;
 										const uint xp = xq + nv;
 
 										if (xp >= Nx) {
-											bxOut[2*q + 0] = bxMel[2*q + 0];
-											bxOut[2*q + 1] = bxMel[2*q + 1];
+											const uint xRef = 2*(Nx - 1) - xp;
+											const uint jRef = xRef % Sfold;
+											const uint qRef = xRef / Sfold;
+											const size_t idxRef =
+												((zC*Nx + jRef*step + qRef) << 1);
+											bxOut[2*q + 0] =  m[idxRef + 0];
+											bxOut[2*q + 1] = -m[idxRef + 1];
 										} else {
 											bxOut[2*q + 0] = bxWrap[2*(q+1) + 0];
 											bxOut[2*q + 1] = bxWrap[2*(q+1) + 1];
@@ -273,7 +276,8 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 									idxMz = ((idx - nv*Sf) << 1);
 									mMz   = opCode(load_pd, &m[idxMz]);
 								} else {
-									idxMz = ((idx + (nv - zC_global)*Sf) << 1);
+									idxMz = ((idx - zC_global*Sf +
+										(nv - zC_global)*Sf) << 1);
 									mMz   = opCode(load_pd, &m[idxMz]);
 								}
 
@@ -281,7 +285,10 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 									idxPz = ((idx + nv*Sf) << 1);
 									mPz   = opCode(load_pd, &m[idxPz]);
 								} else {
-									mPz = mel;
+									const size_t rhoRef = 2*Tz - 1 - (zC_global + nv);
+									const size_t localRef = rhoRef - Nz*commRank();
+									idxPz = (((localRef + NN)*Nx + xC) << 1);
+									mPz = opCode(load_pd, &m[idxPz]);
 								}
 
 								/* ------------------ Cylindrical XZ operator ------------------ */
@@ -789,17 +796,18 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 				    const size_t idxWrap = ((zC*Nx + jWrap*step) << 1);
 				    opCode(store_ps, bxWrap, opCode(load_ps, &m[idxWrap]));
 
-				    alignas(Align) float bxMel[2*step];
-				    opCode(store_ps, bxMel, mel);
-
 				    for (size_t q = 0; q < Nc; q++) {
 				        const uint xq = j + q*Sfold;
 				        const uint xp = xq + nv;
 
-				        if (xp >= Nx) {
-				            // outer boundary placeholder
-				            bxOut[2*q + 0] = bxMel[2*q + 0];
-				            bxOut[2*q + 1] = bxMel[2*q + 1];
+						if (xp >= Nx) {
+						    const uint xRef = 2*(Nx - 1) - xp;
+						    const uint jRef = xRef % Sfold;
+						    const uint qRef = xRef / Sfold;
+						    const size_t idxRef =
+						        ((zC*Nx + jRef*step + qRef) << 1);
+						    bxOut[2*q + 0] =  m[idxRef + 0];
+						    bxOut[2*q + 1] = -m[idxRef + 1];
 				        } else {
 				            bxOut[2*q + 0] = bxWrap[2*(q+1) + 0];
 				            bxOut[2*q + 1] = bxWrap[2*(q+1) + 1];
@@ -818,7 +826,8 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 					// regular reflection across rho=0
 					// rho<0 mirrored to rho>0
 					// mMz = m[idx + (nv - zC_global)*Sf]
-					idxMz = ((idx + (nv - zC_global)*Sf) << 1);
+					idxMz = ((idx - zC_global*Sf +
+						(nv - zC_global)*Sf) << 1);
 					mMz   = opCode(load_ps, &m[idxMz]);
 				}
 
@@ -826,9 +835,10 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 					idxPz = ((idx + nv*Sf) << 1);
 					mPz   = opCode(load_ps, &m[idxPz]);
 				} else {
-					// outer radial boundary, ideally absorbing
-					// simplest placeholder:
-					mPz = mel;
+					const size_t rhoRef = 2*Tz - 1 - (zC_global + nv);
+					const size_t localRef = rhoRef - Nz*commRank();
+					idxPz = (((localRef + NN)*Nx + xC) << 1);
+					mPz = opCode(load_ps, &m[idxPz]);
 				}
 
 				/* ------------------ Cylindrical XZ operator ------------------ */

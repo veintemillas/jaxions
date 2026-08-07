@@ -27,7 +27,8 @@ void propagateCoreGpu(
 	const Float gFac, const Float eps, const Float dp1, const Float dp2,
 	const Float dzc, const Float dzd,
 	const Float* __restrict__ ood2,
-	const Float LL, const uint Lx, const uint Lz, const uint Sf, const uint NN)
+		const Float LL, const uint Lx, const uint Lz, const uint Tz,
+		const uint Sf, const uint NN)
 	{
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
@@ -58,24 +59,35 @@ void propagateCoreGpu(
 
 	for (size_t nv=1; nv <= NN; nv++)
 	{
-		if (X0 + nv >= Lx)
-			malPx = m[idx]; 	// this cancels this term, here we would need absorbing boundary conditions ...
-		else
-			malPx = m[idx + nv];
+			if (X0 + nv >= Lx) {
+				// Periodic continuation on the doubled axial domain:
+				// phi(L+s) = conj(phi(L-s)), L = Lx-1.
+				const uint xRef = 2*(Lx - 1) - (X0 + nv);
+				malPx = conj(m[idx - X0 + xRef]);
+			} else
+				malPx = m[idx + nv];
 
-		if (X0 < nv)
-			malMx = conj(m[idx + (nv-X0)]); // symmetric boundary conditions around x=0
+			if (X0 < nv)
+				malMx = conj(m[idx - X0 + (nv-X0)]); // phi(-x)=conj(phi(x))
 		else
 			malMx = m[idx - nv];
 
 
-		malPz = m[idx + nv*Lx]; // requires a special ghost at rank Np - 1
+			if (Z0_global + nv < Tz) {
+				malPz = m[idx + nv*Lx];
+			} else {
+				// Even reflection about the outer face rho=Tz-1/2.
+				const uint rhoRef = 2*Tz - 1 - (Z0_global + nv);
+				const uint localRef = rhoRef - Sf;
+				const uint rowBase = idx - Z*Lx;
+				malPz = m[rowBase + localRef*Lx];
+			}
 
 		//malMz = m[idx - nv*Lx]; // requires a special ghost at rank 0
 		
 
-		if (Z0_global < nv)	// this doesn't 
-			malMz = m[idx + (nv-Z)*Lx];
+			if (Z0_global < nv)
+				malMz = m[idx - Z*Lx + (nv-Z)*Lx];
 		else
 			malMz = m[idx - nv*Lx];
 
@@ -210,7 +222,8 @@ template<typename Float, const VqcdType VQcd, bool UpdateM>
 __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, 
 			const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, 
 			const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float* __restrict__ ood2, const Float LL,
-			const uint Lx, const uint Lz, const uint Sf, const uint Vo, const uint Vf, const uint NN)
+			const uint Lx, const uint Lz, const uint Tz, const uint Sf,
+			const uint Vo, const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 //	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -230,7 +243,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
         	     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 #endif
 	if (idx >= Vf) return;
-	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Lz, Sf, NN);
+	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Lz, Tz, Sf, NN);
 }
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, 
@@ -249,6 +262,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 	const uint Lx    = ppar.Lx;
 	const uint Ly    = ppar.Ly;
+	const uint Tz    = ppar.Tz;
 #ifdef USE_2DCYL
 	const uint Sf    = ppar.Lz*commRank();
 	const uint Lz    = ppar.Lz;

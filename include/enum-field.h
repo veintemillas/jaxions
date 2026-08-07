@@ -537,6 +537,8 @@
 			FFT_RtoC_M2StoM2S  = 19,
 			FFT1D_RtoR_M2toM2  = 20,
 			FFT_TRANSPOSE_R2R_M2toM2 = 21,
+			FFT1D_DCT_M2toM2   = 22,
+			FFT_TRANSPOSE_DCT_M2toM2 = 23,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {

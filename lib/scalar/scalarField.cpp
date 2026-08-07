@@ -1114,11 +1114,11 @@ void	Scalar::ghostcylindricalpatch(FieldIndex fIdx)
 		}
 	} // end RHO=0 BC
 
-	if (commRank() == commSize()-1){ // only the last rank will have absorbing boundaries
+	if (commRank() == commSize()-1){ // reflect evenly about outer face rho=Tz-1/2
 		if (fIdx == FIELD_M)
 		{
 			for (int nv =1; nv <= Ng; nv++){
-				from = static_cast<void *> (static_cast<char *> (mStart())      + (Nz-1) * ghostsurfBytes);
+					from = static_cast<void *> (static_cast<char *> (mStart())      + (Nz-nv) * ghostsurfBytes);
 				to   = static_cast<void *> (static_cast<char *> (mBackGhost()) + ghostsurfBytes*(nv-1));
 				memcpy(to, from, ghostsurfBytes);
 			}
@@ -1126,7 +1126,7 @@ void	Scalar::ghostcylindricalpatch(FieldIndex fIdx)
 		else if (fIdx == FIELD_M2)
 		{
 			for (int nv =1; nv <= Ng; nv++){
-				from = static_cast<void *> (static_cast<char *> (m2Start())      + (Nz-1) * ghostsurfBytes);
+					from = static_cast<void *> (static_cast<char *> (m2Start())      + (Nz-nv) * ghostsurfBytes);
 				to   = static_cast<void *> (static_cast<char *> (m2BackGhost()) + ghostsurfBytes*(nv-1));
 				memcpy(to, from, ghostsurfBytes);
 			}
