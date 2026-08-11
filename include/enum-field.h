@@ -69,6 +69,8 @@
 			FOLD_M2,
 			UNFOLD_M2,
 			UNFOLD_SLICEM2,
+			FOLD_M2_AS_CMPLX,
+			UNFOLD_M2_AS_CMPLX,
 		}	FoldType;
 
 		typedef	enum	StringType_s
@@ -924,6 +926,7 @@
 			AxitonInfo    axtinfo;
 			bool          randommom;
 			bool          uEvolAll;
+			bool          uDampNone;
 			bool          linmodevol;
 			bool          lme_no_rhs;
 			bool          km_use_mv_a_data;

@@ -45,6 +45,12 @@
 		template<typename cFloat>
 		void	unfoldM22D(const size_t cZ);
 
+		template<typename Float>
+		void	foldM2AsComplex();
+
+		template<typename Float>
+		void	unfoldM2AsComplex();
+
 		public:
 
 			 Folder(Scalar *scalar);

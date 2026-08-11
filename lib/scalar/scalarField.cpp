@@ -1145,6 +1145,23 @@ LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
 }
 
+void Scalar::exchangeGhostsM2AsComplex()
+{
+	const size_t complexSize = 2*fSize;
+	const size_t ghostBytes = Ng*Nxy*complexSize;
+	char *base = static_cast<char *>(m2Cpu());
+	char *physical = base + ghostBytes;
+	char *backGhost = physical + Nxyz*complexSize;
+	char *lastPhysical = physical + (Nxyz - Ng*Nxy)*complexSize;
+
+	LogMsg(VERB_PARANOID,
+	       "[sca] Exchange complex M2 ghosts, ghostBytes %lu", ghostBytes);
+	Scalar::sendGeneral(COMM_SDRV, ghostBytes, MPI_BYTE,
+	                    physical, backGhost, lastPhysical, base);
+	Scalar::sendGeneral(COMM_WAIT, ghostBytes, MPI_BYTE,
+	                    physical, backGhost, lastPhysical, base);
+}
+
 /* For sending 1st slice from string data backwards */
 void	Scalar::sendGhosts3(CommOperation opComm)
 {

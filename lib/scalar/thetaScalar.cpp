@@ -56,7 +56,7 @@ void	CmplxToTheta::runCpu	()
 	toThetaXeon(axionField,shift);
 }
 
-void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
+void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod, const bool doMend)
 {
 	auto	theta = std::make_unique<CmplxToTheta>    (field, shift);
 	Profiler &prof = getProfiler(PROF_SCALAR);
@@ -89,7 +89,6 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 	} else
 		field->setField(FIELD_AXION);
 
-
 	field->setLowMem(false);
 
 	theta->add(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
@@ -101,7 +100,7 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 
 	munge(FOLD_ALL);
 
-	if (wMod == false)
+	if (!wMod && doMend)
 		mendTheta (field);
 
 	// Reset tuning for theta

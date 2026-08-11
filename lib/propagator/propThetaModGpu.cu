@@ -142,4 +142,3 @@ void	propThetaModGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		propThetaModKernel<<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, (float) (M_1_PI*iz), tPz, iz, zQ, dzc, dzd, ood2, Lx, Lx*Lx, Vo, Vf);
 	}
 }
-

@@ -98,6 +98,8 @@ bool lme_no_rhs = false;
 bool km_use_mv_a_data = false;
 bool mink			= false;
 bool aMod     = false;
+bool doMend   = true;
+bool modAtan  = false;
 bool icstudy  = false ;
 bool preprop  = false ;
 bool coSwitch2theta  = true ;
@@ -317,12 +319,15 @@ void	PrintUsage(char *name)
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
 	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
 	printf("  --onlytheta                   Only theta-evolution, rho frozen (default, disabled)\n");
+	printf("  --modatan                     Use atan2(sin,cos) for compact theta differences\n");
   printf("  --evolall                     rho+theta evolution (default) (use when reading a only- ... file to force)\n");
+	printf("  --dampnone                    Disable damping (use when reading a damped file to force)\n");
 	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
 
 	printf("\nInitial conditions:\n");
 	printf("  --icinfo                      Prints more info about initial conditions.\n");
+	printf("  --noMend                      Do not mend theta after saxion-to-axion conversion (default: mend).\n");
 	printf("  --ctype smooth/kmax/vilgor    Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions.\n");
 	printf("\n");
@@ -446,6 +451,7 @@ void	PrintICoptions()
 	printf("  --icstudy                           	           Prints axion.m.xxxxx files during prepropagation (Default no).\n");
 	printf("\n-----------------------------------------------------------------------------------------------\n");
 	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n\n");
+	printf("  --noMend                                        Do not mend theta after saxion-to-axion conversion (default: mend).\n\n");
 
 	printf("  Test examples:                                                                             .\n\n");
 	printf("  --ctype lola --logi 4.0 --sIter 1 --kcr 2.0                                                .\n\n");
@@ -724,6 +730,7 @@ int	parseArgs (int argc, char *argv[])
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
   icdatst.uEvolAll  = false;
+  icdatst.uDampNone = false;
 
 	/* Default measurements */
 	deninfa.idxprint  = 0;
@@ -777,6 +784,18 @@ int	parseArgs (int argc, char *argv[])
       }
 
 			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--noMend"))
+		{
+			doMend = false;
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--modatan"))
+		{
+			modAtan = true;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--mink"))
@@ -1052,6 +1071,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
 			uPot = true;
+			icdatst.uEvolAll = false;
 			vqcdTypeEvol = V_EVOL_RHO;
 			PARSE1;
 		}
@@ -1059,6 +1079,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--onlytheta"))
 		{
 			uPot = true;
+			icdatst.uEvolAll = false;
 			vqcdTypeEvol = V_EVOL_THETA;
 			PARSE1;
 		}
@@ -1067,6 +1088,13 @@ int	parseArgs (int argc, char *argv[])
 		{
 			icdatst.uEvolAll = true;
 			vqcdTypeEvol = V_NONE;
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--dampnone"))
+		{
+			icdatst.uDampNone = true;
+			vqcdTypeDamp = V_NONE;
 			PARSE1;
 		}
 
@@ -1336,6 +1364,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			gammo = atof(argv[i+1]);
+			icdatst.uDampNone = false;
 			vqcdTypeDamp = V_DAMP_RHO ;
 
 			uPot  = true;
@@ -1359,6 +1388,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			dectime = atof(argv[i+1]);
+			icdatst.uDampNone = false;
 			vqcdTypeDamp = V_DAMP_RHO ;
 
 			uPot  = true;
@@ -1383,6 +1413,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			gammo = atof(argv[i+1]);
+			icdatst.uDampNone = false;
 			vqcdTypeDamp = V_DAMP_ALL ;
 
 			uPot  = true;
@@ -2869,12 +2900,7 @@ if (icdatst.cType == CONF_SMOOTH )
 
 
 	vqcdType |= vpqType;
-  if ( (vqcdTypeEvol | V_EVOL_RHO) & (vqcdTypeEvol | V_EVOL_THETA))
-  {
-    vqcdTypeEvol = V_NONE;
-    icdatst.uEvolAll = true;
-  }
- 	vqcdType |= (vqcdTypeDamp | vqcdTypeEvol);
+	vqcdType |= (vqcdTypeDamp | vqcdTypeEvol);
 
 
 	if (zrestore < zthres) {

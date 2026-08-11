@@ -9,6 +9,8 @@
 
 #include <immintrin.h>
 
+extern bool modAtan;
+
 
 // --- ISA-dependent vector types ---
 #ifdef __AVX512F__
@@ -503,6 +505,23 @@ _MData_	ret;
 
 inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 {
+	if (modAtan) {
+		alignas(64) double xv[8], mv[8], rv[8];
+		opCode(storeu_pd, xv, x);
+		opCode(storeu_pd, mv, md);
+#ifdef __AVX512F__
+		constexpr int lanes = 8;
+#elif defined(__AVX__)
+		constexpr int lanes = 4;
+#else
+		constexpr int lanes = 2;
+#endif
+		for (int i = 0; i < lanes; ++i) {
+			const double angle = xv[i]*(2.0*M_PI)/mv[i];
+			rv[i] = std::atan2(std::sin(angle), std::cos(angle))*mv[i]/(2.0*M_PI);
+		}
+		return opCode(loadu_pd, rv);
+	}
 	_MData_	min, ret;
 
 	_MData_ xP  = opCode(add_pd, x,  md);
@@ -513,9 +532,8 @@ inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 
 	min = opCode(min_pd, opCode(min_pd, xP2, xM2), x2);
 #ifdef	__AVX512F__
-	ret = opCode(mask_add_pd, opCode(setzero_pd), opCode(cmp_pd_mask, min, xP2, _CMP_EQ_OQ), opCode(setzero_pd), xP);
-	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd_mask, min, xM2, _CMP_EQ_OQ), ret,   xM);
-	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd_mask, min, x2,  _CMP_EQ_OQ), ret,   x);
+	ret = opCode(mask_blend_pd, opCode(cmp_pd_mask, xP2, x2, _CMP_LT_OQ), x, xP);
+	ret = opCode(mask_blend_pd, opCode(cmp_pd_mask, xM2, x2, _CMP_LT_OQ), ret, xM);
 #elif   defined(__AVX__)
 	ret = opCode(add_pd,
 		opCode(add_pd,
@@ -917,6 +935,23 @@ _MData_	ret;
 
 inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 {
+	if (modAtan) {
+		alignas(64) float xv[16], mv[16], rv[16];
+		opCode(storeu_ps, xv, x);
+		opCode(storeu_ps, mv, md);
+#ifdef __AVX512F__
+		constexpr int lanes = 16;
+#elif defined(__AVX__)
+		constexpr int lanes = 8;
+#else
+		constexpr int lanes = 4;
+#endif
+		for (int i = 0; i < lanes; ++i) {
+			const float angle = xv[i]*static_cast<float>(2.0*M_PI)/mv[i];
+			rv[i] = std::atan2(std::sin(angle), std::cos(angle))*mv[i]/static_cast<float>(2.0*M_PI);
+		}
+		return opCode(loadu_ps, rv);
+	}
 	_MData_	min, ret;
 
 	_MData_ xP  = opCode(add_ps, x,  md);
@@ -927,9 +962,8 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 
 	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
 #if	defined(__AVX512F__)
-	ret = opCode(mask_add_ps, opCode(setzero_ps), opCode(cmp_ps_mask, min, xP2, _CMP_EQ_OQ), opCode(setzero_ps), xP);
-	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps_mask, min, xM2, _CMP_EQ_OQ), ret,                xM);
-	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps_mask, min, x2,  _CMP_EQ_OQ), ret,                x);
+	ret = opCode(mask_blend_ps, opCode(cmp_ps_mask, xP2, x2, _CMP_LT_OQ), x, xP);
+	ret = opCode(mask_blend_ps, opCode(cmp_ps_mask, xM2, x2, _CMP_LT_OQ), ret, xM);
 #elif   defined(__AVX__)
 	ret = opCode(add_ps,
 		opCode(add_ps,

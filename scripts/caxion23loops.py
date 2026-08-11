@@ -12,6 +12,117 @@ from IPython.display import clear_output
 
 
 # ---------------------------------------------------------------------------
+# Diagnostics
+# ---------------------------------------------------------------------------
+
+def pq_potential_diagnostic(filename, modulus_cut=0.5, return_maps=False):
+    """Measure the PQ potential in a cylindrical complex-field map.
+
+    The critical density is the height of the Mexican-hat barrier,
+    ``Vcrit = lambda/4``.  The returned ``potential_over_critical`` is
+
+        V(phi)/Vcrit = ((|phi|/R)**2 - 1)**2.
+
+    Integrated quantities use the axisymmetric volume element
+    ``2*pi*rho*dr*dz``.  ``modulus_cut`` independently identifies the
+    low-modulus (approximately PQ-restored) region; this is needed because
+    V > Vcrit can also occur through a large outward radial excursion.
+
+    Parameters
+    ----------
+    filename : str or path-like
+        Measurement file containing ``/mapp/m``.
+    modulus_cut : float
+        Select sites with ``|phi|/R < modulus_cut`` (default 0.5).
+    return_maps : bool
+        Include the 2D modulus, potential and mask arrays in the result.
+
+    Returns
+    -------
+    dict
+        Scalar parameters and cylindrical-volume-weighted energy measures.
+    """
+    with h5py.File(filename, 'r') as h5:
+        if 'mapp/m' not in h5:
+            raise KeyError("measurement file has no '/mapp/m' complex map")
+
+        nz = int(h5.attrs.get('Nx', h5.attrs['Size']))
+        nrho = int(h5.attrs.get('Depth', nz))
+        physical_size = float(h5.attrs['Physical size'])
+        scale_factor = float(h5.attrs.get('R', 1.0))
+        msa = float(h5.attrs.get('msa', h5.attrs['Saxion mass']))
+        raw = np.asarray(h5['mapp/m'])
+
+    if raw.size != 2 * nrho * nz:
+        raise ValueError(
+            f"'/mapp/m' has {raw.size} values; expected {2*nrho*nz} "
+            f"for (Nrho, Nz)=({nrho}, {nz})"
+        )
+    if scale_factor <= 0 or msa <= 0:
+        raise ValueError(f"R and msa must be positive, got R={scale_factor}, msa={msa}")
+    if not 0 <= modulus_cut <= 1:
+        raise ValueError('modulus_cut must lie between 0 and 1')
+
+    # mapp/m is stored as [Re, Im] with z fast and rho slow.
+    field = raw.reshape(nrho, nz, 2)
+    modulus = np.hypot(field[..., 0], field[..., 1]) / scale_factor
+
+    dx = physical_size / nz
+    lam = 0.5 * (msa / (scale_factor * dx))**2
+    critical_density = 0.25 * lam
+    potential_over_critical = (modulus**2 - 1.0)**2
+    potential_density = critical_density * potential_over_critical
+    restored = modulus < modulus_cut
+
+    # Finite-volume radial shells.  Unlike a pointwise 2*pi*rho weight, this
+    # gives the axis cell its proper non-zero volume.
+    rho = np.arange(nrho, dtype=float) * dx
+    rho_inner = np.maximum(0.0, rho - 0.5 * dx)
+    rho_outer = rho + 0.5 * dx
+    cell_volume = (np.pi * (rho_outer**2 - rho_inner**2) * dx)[:, None]
+    represented_volume = float(np.sum(cell_volume) * nz)
+    restored_volume = float(np.sum(cell_volume * restored))
+    potential_energy = float(np.sum(cell_volume * potential_density))
+    restored_potential_energy = float(np.sum(cell_volume * potential_density * restored))
+
+    result = {
+        'Nrho': nrho,
+        'Nz': nz,
+        'dx': dx,
+        'R': scale_factor,
+        'msa': msa,
+        'lambda': lam,
+        'critical_density': critical_density,
+        'potential_energy': potential_energy,
+        'critical_energy_same_volume': critical_density * represented_volume,
+        'potential_energy_over_critical_volume': (
+            potential_energy / (critical_density * represented_volume)
+            if represented_volume else np.nan
+        ),
+        'modulus_cut': modulus_cut,
+        'restored_volume': restored_volume,
+        'restored_volume_fraction': (
+            restored_volume / represented_volume if represented_volume else np.nan
+        ),
+        'restored_potential_energy': restored_potential_energy,
+        'restored_energy_over_barrier': (
+            restored_potential_energy / (critical_density * restored_volume)
+            if restored_volume else np.nan
+        ),
+        'minimum_modulus': float(np.min(modulus)),
+        'maximum_potential_over_critical': float(np.max(potential_over_critical)),
+    }
+    if return_maps:
+        result.update({
+            'modulus': modulus,
+            'potential_density': potential_density,
+            'potential_over_critical': potential_over_critical,
+            'restored_mask': restored,
+        })
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Top-level simulation driver
 # ---------------------------------------------------------------------------
 

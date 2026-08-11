@@ -7,6 +7,7 @@
 #include "strings/strings.h"
 #include "strings/stringXeon.h"
 #include "scalar/fourier.h"
+#include "scalar/theta2Cmplx.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -36,8 +37,12 @@ StringData	Strings::runGpu	()
 	uint3		tmpData;
 	StringData	ret;
 
+	const bool theta = axionField->Field() & FIELD_AXION;
 	axionField->exchangeGhosts(FIELD_M);
-	tmpData = stringGpu(axionField->mGpu(), uLx, uLz, rLx, rLz, uS, uV, axionField->Precision(), axionField->sData(), ((cudaStream_t *)axionField->Streams())[0]);
+	if (theta)
+		theta2CmplxM2(axionField);
+	const void *input = theta ? axionField->m2Gpu() : axionField->mGpu();
+	tmpData = stringGpu(input, uLx, uLz, rLx, rLz, uS, uV, axionField->Precision(), axionField->sData(), ((cudaStream_t *)axionField->Streams())[0]);
 
 	ret.strDen       = tmpData.x;
 	ret.strChr       = tmpData.y;
@@ -57,7 +62,19 @@ StringData	Strings::runGpu	()
 
 StringData	Strings::runCpu	()
 {
-	stringdata = stringCpu(axionField);
+	const bool theta = axionField->Field() & FIELD_AXION;
+	if (theta) {
+		Folder munge(axionField);
+		if (axionField->Folded())
+			munge(UNFOLD_ALL);
+		axionField->exchangeGhosts(FIELD_M);
+		theta2CmplxM2(axionField);
+		axionField->setM2Folded(false);
+		munge(FOLD_M2_AS_CMPLX);
+		axionField->exchangeGhostsM2AsComplex();
+		munge(FOLD_ALL);
+	}
+	stringdata = stringCpu(axionField, theta ? axionField->m2Cpu() : nullptr, !theta);
 	return	stringdata;
 }
 
@@ -91,7 +108,7 @@ StringData	strings	(Scalar *field)
 
 	StringData	strDen;
 
-	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB)) {
+	if (field->Field() == FIELD_WKB) {
 		strDen.strDen = 0;
 		strDen.strChr = 0;
 		strDen.wallDn = 0;
@@ -110,7 +127,7 @@ StringData	strings	(Scalar *field)
 		pelotas(FIELD_MV, FFT_BCK); // BCK is to send to position space transposed in
 	}
 
-	if	(!field->Folded() && field->Device() == DEV_CPU)
+	if	(!field->Folded() && field->Device() == DEV_CPU && !(field->Field() & FIELD_AXION))
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
@@ -183,7 +200,7 @@ StringData	strings2	(Scalar *field)
 
 	StringData	strDen;
 
-	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB)) {
+	if (field->Field() == FIELD_WKB) {
 		strDen.strDen = 0;
 		strDen.strChr = 0;
 		strDen.wallDn = 0;
@@ -203,7 +220,7 @@ StringData	strings2	(Scalar *field)
 		pelotas(FIELD_MV, FFT_BCK); // BCK is to send to position space transposed in
 	}
 
-	if	(!field->Folded() && field->Device() == DEV_CPU)
+	if	(!field->Folded() && field->Device() == DEV_CPU && !(field->Field() & FIELD_AXION))
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);

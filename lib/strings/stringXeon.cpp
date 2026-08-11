@@ -506,6 +506,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		const size_t  YC = ( Lx>>2);
 //		const size_t rXC = (rLx<<2);
 		const size_t rYC = (rLx>>2);
+		const long long int __attribute__((aligned(Align))) shfLf[8] = { 2, 3, 4, 5, 6, 7, 0, 1 };
+		const auto vShLf = opCode(load_si512, shfLf);
 
 		int wHand[4] = { 0, 0, 0, 0 };
 		int  hand[4] = { 0, 0, 0, 0 };
@@ -578,9 +580,9 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 					mPz = opCode(load_pd, &m[idxPz]);
 					mZX = opCode(load_pd, &m[idxZX]);
 #if	defined(__AVX512F__)
-					mPy = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00111001);
-					mXY = opCode(permute_pd, opCode(load_pd, &m[idxXY]), 0b00111001);
-					mYZ = opCode(permute_pd, opCode(load_pd, &m[idxYZ]), 0b00111001);
+					mPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
+					mXY = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxXY]));
+					mYZ = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxYZ]));
 #elif	defined(__AVX__)
 					tmp = opCode(load_pd, &m[idxPy]);
 					str = opCode(load_pd, &m[idxXY]);
@@ -1144,15 +1146,16 @@ StringData stringKernelXeon2D(Scalar *field)
 }
 #endif
 
-StringData	stringCpu	(Scalar *field)
+StringData	stringCpu	(Scalar *field, const void *m, bool exchange)
 {
 #ifdef USE_2DCYL
 	return stringKernelXeon2D(field);
 #else
 	const size_t S = field->Surf()*field->getNg();
 	const size_t V = field->Size();
-	field->exchangeGhosts(FIELD_M);
+	if (exchange)
+		field->exchangeGhosts(FIELD_M);
 	field->setSD(SD_MAP);
-	return (stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
+	return (stringKernelXeon(m == nullptr ? field->mCpu() : m, field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
 #endif
 }

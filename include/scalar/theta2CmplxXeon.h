@@ -4,4 +4,5 @@
 	#include "scalar/scalarField.h"
 
 	void	th2cxXeon (Scalar *sField);
+	void	th2cxM2Xeon (Scalar *sField);
 #endif

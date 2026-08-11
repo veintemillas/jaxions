@@ -518,18 +518,19 @@ writePMapHdf5s (axiona, LAB);
 	//	--------------------------------------------------------------------------
 
 
-	if(axiona->Field() == FIELD_SAXION){
+	if((axiona->Field() == FIELD_SAXION) || (axiona->Field() & FIELD_AXION)){
+		const bool thetaStrings = axiona->Field() & FIELD_AXION;
 		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF)))
 		{
 
 			/* By default */
-			if ( !(measa & MEAS_STRINGCOO)){
+			if ( !(measa & MEAS_STRINGCOO) || thetaStrings){
 					/*Identify strings */
 					LogMsg(VERB_NORMAL, "[Meas %d] string (measa %d, mask %d)",indexa,measa,mask);
 					MeasDataOut.str = strings(axiona);
 
 					/* Length studies New or Old*/
-					if (strmeas & (STRMEAS_LOOPS | STRMEAS_LABEL))
+					if (!thetaStrings && (strmeas & (STRMEAS_LOOPS | STRMEAS_LABEL)))
 					{
 						StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
 						MeasDataOut.str = slp.stringdata;
@@ -543,12 +544,8 @@ writePMapHdf5s (axiona, LAB);
 					/* print 3D plaquete info map or just global counts */
 					if ( measa & MEAS_STRINGMAP )
 					{
-						// LogOut("+map ");
-						if (p3DthresholdMB/((double) MeasDataOut.str.strDen) > 1.)
-						{
-							LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
-							writeString(axiona, MeasDataOut.str, true);
-						}
+						LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
+						writeString(axiona, MeasDataOut.str, true);
 					} /* we print global counts, unless we only wanted mask */
 					else if ( !(measa & MEAS_MASK)) {
 						writeString(axiona, MeasDataOut.str, false);
@@ -1083,13 +1080,17 @@ writePMapHdf5s (axiona, LAB);
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
 					}
 	}
-	else if (axiona->Field() == FIELD_AXION) { // FIELD_AXION
+	else if (axiona->Field() & FIELD_AXION) {
+		const bool compactTheta = axiona->Field() == FIELD_AXION_MOD;
 		if (measa & MEAS_BINTHETA)
 		{
 			// LogOut("binthetha ");
 			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ",indexa);
 				Binner<3000,Float> thBin(static_cast<Float *>(axiona->mStart()) , axiona->Size(),
-								 [z=R_now] (Float x) { return (double) (x/z); });
+								 [z=R_now, compactTheta] (Float x) {
+									 const double theta = x/z;
+									 return compactTheta ? std::remainder(theta, 2.0*M_PI) : theta;
+								 });
 				thBin.run();
 				writeBinner(thBin, "/bins", "thetaB");
 				MeasDataOut.maxTheta = max(abs(thBin.min()),thBin.max());
@@ -1103,7 +1104,10 @@ writePMapHdf5s (axiona, LAB);
 					// LogOut("bintt2 ");
 					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",indexa);
 					Binner<3000,Float> logth2Bin2(static_cast<Float *>(axiona->mStart()) , axiona->Size(),
-									 [z=R_now] (Float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
+									 [z=R_now, compactTheta] (Float x) -> float {
+										 const double theta = compactTheta ? std::remainder(x/z, 2.0*M_PI) : x/z;
+										 return log10(1.0e-10 + theta*theta);
+									 });
 					logth2Bin2.run();
 					writeBinner(logth2Bin2, "/bins", "logtheta2B");
 				}
@@ -1188,7 +1192,7 @@ writePMapHdf5s (axiona, LAB);
 			// LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
 			LogOut("str not measured ");
 		}
-	} else if ( axiona->Field() == FIELD_AXION) {
+	} else if (axiona->Field() & FIELD_AXION) {
 		LogOut("maxth=%f ", MeasDataOut.maxTheta);
 		LogOut(" ... ");
 	} else if ( axiona->Field() == FIELD_NAXION || axiona->Field() == FIELD_PAXION) {

@@ -70,3 +70,25 @@ void	th2cxXeon (Scalar *sField)
 		break;
 	}
 }
+
+template<typename Float>
+static void th2cxM2XeonKernel (Scalar *sField)
+{
+	const Float * __restrict__ in = static_cast<const Float *>(sField->mCpu());
+	complex<Float> * __restrict__ out = static_cast<complex<Float> *>(sField->m2Cpu());
+	const Float ir = Float(1)/Float(*sField->RV());
+
+	#pragma omp parallel for default(shared) schedule(static)
+	for (size_t idx = 0; idx < sField->eSize(); ++idx) {
+		const Float theta = in[idx]*ir;
+		out[idx] = complex<Float>(cos(theta), sin(theta));
+	}
+}
+
+void th2cxM2Xeon (Scalar *sField)
+{
+	if (sField->Precision() == FIELD_DOUBLE)
+		th2cxM2XeonKernel<double>(sField);
+	else if (sField->Precision() == FIELD_SINGLE)
+		th2cxM2XeonKernel<float>(sField);
+}

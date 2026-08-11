@@ -18,7 +18,7 @@ static __device__ __forceinline__ Float modPi (const Float x, const Float OneOvP
 {
 	const Float tmp = x*OneOvPi;
 
-	if (tmp >=  1.)
+	if (tmp >   1.)
 		return (x-TwoPiZ);
 
 	if (tmp <  -1.)

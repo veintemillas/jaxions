@@ -13,18 +13,25 @@ using namespace indexHelper;
 
 #define	TwoPi	(2.*M_PI)
 
+__device__ __constant__ bool modAtanGpu;
+
 template<typename Float>
 static __device__ __forceinline__ Float modPi (const Float x, const Float OneOvPi, const Float TwoPiZ)
 {
-	const Float tmp = x*OneOvPi;
+	/* Full reduction into [-pi R, pi R).  Unlike the old implementation,
+	 * this remains correct when x crosses more than one period. */
+	const Float periods = floor(static_cast<Float>(0.5)*x*OneOvPi + static_cast<Float>(0.5));
+	return x - periods*TwoPiZ;
+}
 
-	if (tmp >=  1.)
-		return (x-TwoPiZ);
+template<typename Float>
+static __device__ __forceinline__ Float modDistance (const Float x, const Float OneOvPi, const Float TwoPiZ)
+{
+	if (!modAtanGpu)
+		return modPi(x, OneOvPi, TwoPiZ);
 
-	if (tmp <  -1.)
-		return (x+TwoPiZ);
-
-	return x;
+	const Float angle = x*OneOvPi*static_cast<Float>(M_PI);
+	return atan2(sin(angle), cos(angle))*TwoPiZ/static_cast<Float>(TwoPi);
 }
 
 template<typename Float, const bool wMod>
@@ -75,9 +82,9 @@ static __device__ __forceinline__ void	updateVThetaCoreGpu(const uint idx, const
 		idxMz = idx - nv*Sf;
 
 		if (wMod) {
-			mel += (modPi(m[idxPx] - tmp, zP, tPz) + modPi(m[idxMx] - tmp, zP, tPz) +
-			        modPi(m[idxPy] - tmp, zP, tPz) + modPi(m[idxMy] - tmp, zP, tPz) +
-			        modPi(m[idxPz] - tmp, zP, tPz) + modPi(m[idxMz] - tmp, zP, tPz))*static_cast<Float*>(ood2)[nv-1];
+			mel += (modDistance(m[idxPx] - tmp, zP, tPz) + modDistance(m[idxMx] - tmp, zP, tPz) +
+			        modDistance(m[idxPy] - tmp, zP, tPz) + modDistance(m[idxMy] - tmp, zP, tPz) +
+			        modDistance(m[idxPz] - tmp, zP, tPz) + modDistance(m[idxMz] - tmp, zP, tPz))*static_cast<Float*>(ood2)[nv-1];
 		} else
 			mel += (m[idxPx] + m[idxMx] + m[idxPy] + m[idxMy] + m[idxPz] + m[idxMz] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
 	}
@@ -135,9 +142,9 @@ static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, con
 		idxMz = idx - nv*Sf;
 
 		if (wMod) {
-			mel += (modPi(m[idxPx] - tmp, zP, tPz) + modPi(m[idxMx] - tmp, zP, tPz) +
-			        modPi(m[idxPy] - tmp, zP, tPz) + modPi(m[idxMy] - tmp, zP, tPz) +
-			        modPi(m[idxPz] - tmp, zP, tPz) + modPi(m[idxMz] - tmp, zP, tPz))*static_cast<Float*>(ood2)[nv-1];
+			mel += (modDistance(m[idxPx] - tmp, zP, tPz) + modDistance(m[idxMx] - tmp, zP, tPz) +
+			        modDistance(m[idxPy] - tmp, zP, tPz) + modDistance(m[idxMy] - tmp, zP, tPz) +
+			        modDistance(m[idxPz] - tmp, zP, tPz) + modDistance(m[idxMz] - tmp, zP, tPz))*static_cast<Float*>(ood2)[nv-1];
 		} else
 			mel += (m[idxPx] + m[idxMx] + m[idxPy] + m[idxMy] + m[idxPz] + m[idxMz] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
 	}
@@ -148,10 +155,7 @@ static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, con
 	v[idx - NN*Sf] = mel;
 	mel *= dzd;
 	tmp += mel;
-	if (wMod)
-		m2[idx] = modPi(tmp, zP, tPz);
-	else
-		m2[idx] = tmp;
+	m2[idx] = tmp;
 }
 
 template<typename Float, const bool wMod>
@@ -447,6 +451,7 @@ void	updateMThetaGpu(void * __restrict__ m, void * __restrict__ v, void * __rest
 }
 
 
+
 void	updateVThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
 	const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
 		     cudaStream_t &stream, const bool wMod)
@@ -475,6 +480,12 @@ void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	if (Vo>Vf)
 		return ;
 
+	static int cachedModAtan = -1;
+	if (wMod && cachedModAtan != static_cast<int>(modAtan)) {
+		cudaMemcpyToSymbol(modAtanGpu, &modAtan, sizeof(bool));
+		cachedModAtan = static_cast<int>(modAtan);
+	}
+
 	switch (wMod) {
 
 		case	true:
@@ -488,4 +499,3 @@ void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 	return;
 }
-

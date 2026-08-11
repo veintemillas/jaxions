@@ -314,6 +314,7 @@
 		void	sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng = -1);
  		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
+		void	exchangeGhostsM2AsComplex();	// Exchange folded complex data stored in a scalar field's m2 workspace
 
 		void	sendGhosts3(CommOperation opComm);
 		void	exchangeStringGhost();
