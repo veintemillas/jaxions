@@ -692,6 +692,8 @@ def gm(address,something='summary',printerror=False):
                 "coords" : [cordi[offsi[i]:offsi[i+1],:] for i in range(len(offsi)-1)],
                 "closed" : f['/string/loops/closed'][()],
                 }
+            if '/string/loops/chiralities' in f:
+                duxs["chiralities"] = f['/string/loops/chiralities'][()]
             return duxs
 
     ##########
