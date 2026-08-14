@@ -60,6 +60,7 @@ static inline GatherBlock gather_append_to_rank0(const std::vector<T>& local,
 static inline MPI_Datatype mpi_u32() { return MPI_UINT32_T; }
 static inline MPI_Datatype mpi_u64() { return MPI_UINT64_T; }
 static inline MPI_Datatype mpi_u8 () { return MPI_UINT8_T;  }
+static inline MPI_Datatype mpi_i8 () { return MPI_INT8_T;   }
 static inline MPI_Datatype mpi_f64() { return MPI_DOUBLE;   }
 
 static inline void h5_write_1d(const char* group, const char* name,
@@ -138,6 +139,9 @@ static inline void sort_loops_inplace_rewire(
     GatherBlock& B_sizes,
     GatherBlock& B_offsets,   // must be global (N+1)
     GatherBlock& B_closed,
+#ifdef USE_2DCYL
+    GatherBlock& B_chiralities,
+#endif
     GatherBlock& B_len_com,
     GatherBlock& B_com,
     GatherBlock& B_inertia,
@@ -174,6 +178,9 @@ static inline void sort_loops_inplace_rewire(
     auto* SIZ = static_cast<uint64_t*>(resv(N   * sizeof(uint64_t)));
     auto* OFF = static_cast<uint64_t*>(resv((N+1)*sizeof(uint64_t)));
     auto* CLO = static_cast<uint8_t *> (resv(N   * sizeof(uint8_t )));
+#ifdef USE_2DCYL
+    auto* CHI = static_cast<int8_t  *> (resv(N   * sizeof(int8_t  )));
+#endif
     auto* LCM = static_cast<double*  > (resv(N   * sizeof(double   )));
     auto* COM = static_cast<double*  > (resv(3*N * sizeof(double   )));
     auto* INE = static_cast<double*  > (resv(6*N * sizeof(double   )));
@@ -191,6 +198,9 @@ static inline void sort_loops_inplace_rewire(
     const auto* S0 = static_cast<const uint64_t*>(B_sizes.ptr);
     const auto* Of = static_cast<const uint64_t*>(B_offsets.ptr);
     const auto* C0 = static_cast<const uint8_t *> (B_closed.ptr);
+#ifdef USE_2DCYL
+    const auto* CH0= static_cast<const int8_t  *> (B_chiralities.ptr);
+#endif
     const auto* LC = static_cast<const double*  > (B_len_com.ptr);
     const auto* CM = static_cast<const double*  > (B_com.ptr);
     const auto* IN = static_cast<const double*  > (B_inertia.ptr);
@@ -205,6 +215,9 @@ static inline void sort_loops_inplace_rewire(
         LAB[ii] = L0[i];
         SIZ[ii] = S0[i];
         CLO[ii] = C0[i];
+#ifdef USE_2DCYL
+        CHI[ii] = CH0[i];
+#endif
         LCM[ii] = LC[i];
         std::memcpy(&COM[3*ii], &CM[3*i], 3*sizeof(double));
         std::memcpy(&INE[6*ii], &IN[6*i], 6*sizeof(double));
@@ -232,6 +245,9 @@ static inline void sort_loops_inplace_rewire(
     B_sizes  .ptr = SIZ;
     B_offsets.ptr = OFF;            B_offsets.count = N+1; // important
     B_closed .ptr = CLO;
+#ifdef USE_2DCYL
+    B_chiralities.ptr = CHI;
+#endif
     B_len_com.ptr = LCM;
     B_com    .ptr = COM;
     B_inertia.ptr = INE;
@@ -294,6 +310,9 @@ void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango, I
 	GatherBlock B_sizes      = gather_append_to_rank0(slp.loop_sizes,      dst, mpi_u64());
 	GatherBlock B_offsets    = gather_append_to_rank0(slp.loop_offsets,    dst, mpi_u64());
 	GatherBlock B_closed     = gather_append_to_rank0(slp.loop_closed,     dst, mpi_u8 ());
+#ifdef USE_2DCYL
+	GatherBlock B_chiralities= gather_append_to_rank0(slp.loop_chiralities,dst, mpi_i8 ());
+#endif
 	GatherBlock B_len_com    = gather_append_to_rank0(slp.loop_len_com,    dst, mpi_f64());
 	GatherBlock B_com        = gather_append_to_rank0(slp.loop_com,        dst, mpi_f64());
 	GatherBlock B_inertia    = gather_append_to_rank0(slp.loop_inertia,    dst, mpi_f64());
@@ -321,6 +340,9 @@ void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango, I
 	// Now sort & rewire; writing code stays untouched
 	sort_loops_inplace_rewire(axion,
 	                          B_labels, B_sizes, B_offsets, B_closed,
+#ifdef USE_2DCYL
+	                          B_chiralities,
+#endif
 	                          B_len_com, B_com, B_inertia, B_eigs, B_origin, B_coords);
 
 	LogMsg(VERB_NORMAL,"[wSLO] writting");
@@ -331,6 +353,10 @@ void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango, I
 	h5_write_1d(loopsGroup, "sizes",   H5T_NATIVE_ULLONG,B_sizes.ptr,    (hsize_t)B_sizes.count,    0, iop);
 	h5_write_1d(loopsGroup, "offsets", H5T_NATIVE_ULLONG,B_offsets.ptr,  (hsize_t)(B_sizes.count+1),0, iop);
 	h5_write_1d(loopsGroup, "closed",  H5T_NATIVE_UCHAR, B_closed.ptr,   (hsize_t)B_closed.count,   0, iop);
+#ifdef USE_2DCYL
+	h5_write_1d(loopsGroup, "chiralities", H5T_NATIVE_INT8, B_chiralities.ptr,
+	            (hsize_t)B_chiralities.count, 0, iop);
+#endif
 	h5_write_1d(loopsGroup, "llengths", H5T_NATIVE_DOUBLE, B_len_com.ptr, (hsize_t)B_len_com.count, 0, iop);
 
 	// 2D views for the flattened 3/6 columns

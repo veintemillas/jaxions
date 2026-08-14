@@ -238,6 +238,66 @@ T clamp(const T& val, const T& low, const T& high) {
     return std::min(std::max(val, low), high);
 }
 
+/* Locate phi=0 inside a plaquette using the bilinear field interpolant.
+ * Corner order is (00, 10, 11, 01); the returned coordinates are the
+ * fractional distances (u,v) along the first and second plaquette axes. */
+template <typename Float>
+inline void set_cross(
+    std::complex<Float> m00, std::complex<Float> m10,
+    std::complex<Float> m11, std::complex<Float> m01,
+    Float* du_out)
+{
+    using std::abs;
+    using std::imag;
+    using std::real;
+    using std::sqrt;
+
+    const auto a  = m00;
+    const auto b  = m10 - m00;
+    const auto c  = m01 - m00;
+    const auto d  = m11 + m00 - m10 - m01;
+
+    const Float ar = real(a), ai = imag(a);
+    const Float br = real(b), bi = imag(b);
+    const Float cr = real(c), ci = imag(c);
+    const Float dr = real(d), di = imag(d);
+
+    const Float A = ai*cr - ar*ci;
+    const Float B = ai*dr + bi*cr - ar*di - br*ci;
+    const Float C = bi*dr - br*di;
+
+    Float u = Float(0.5);
+    Float v = Float(0.5);
+    const Float eps = Float(1e-6);
+    const Float discriminant = B*B - Float(4)*A*C;
+
+    if (abs(C) > eps && discriminant >= Float(0)) {
+        const Float root = sqrt(discriminant);
+        const Float u1 = (-B + root)/(Float(2)*C);
+        const Float u2 = (-B - root)/(Float(2)*C);
+        if (u1 >= Float(0) && u1 <= Float(1))
+            u = u1;
+        else if (u2 >= Float(0) && u2 <= Float(1))
+            u = u2;
+    } else if (abs(B) > eps) {
+        const Float linearRoot = -A/B;
+        if (linearRoot >= Float(0) && linearRoot <= Float(1))
+            u = linearRoot;
+    }
+
+    const Float denominator = cr + dr*u;
+    if (abs(denominator) > eps)
+        v = -(ar + br*u)/denominator;
+    else {
+        const Float denominatorImag = ci + di*u;
+        if (abs(denominatorImag) > eps)
+            v = -(ai + bi*u)/denominatorImag;
+    }
+
+    du_out[0] = clamp(u, Float(0), Float(1));
+    du_out[1] = clamp(v, Float(0), Float(1));
+}
+
 
 template <typename Float>
 inline void set_cross_and_velocity(
@@ -252,44 +312,10 @@ inline void set_cross_and_velocity(
     using std::imag;
     using std::norm;
     using std::conj;
-    using std::sqrt;
-    using std::abs;
 
-    // Bilinear interpolation coefficients for φ
-    auto a = m00;
-    auto b = m10 - m00;
-    auto c1 = m01 - m00;
-    auto d = m11 + m00 - m10 - m01;
-
-    Float a_r = real(a), a_i = imag(a);
-    Float b_r = real(b), b_i = imag(b);
-    Float c_r = real(c1), c_i = imag(c1);
-    Float d_r = real(d), d_i = imag(d);
-
-    Float A = a_i * c_r - a_r * c_i;
-    Float B = a_i * d_r + b_i * c_r - a_r * d_i - b_r * c_i;
-    Float C = b_i * d_r - b_r * d_i;
-
-    Float u = Float(0.5), v = Float(0.5);
-    Float discr = B * B - Float(4) * A * C;
-
-    if (abs(C) > Float(1e-6) && discr >= Float(0)) {
-        Float sqrtD = sqrt(discr);
-        Float u1 = (-B + sqrtD) / (Float(2) * C);
-        Float u2 = (-B - sqrtD) / (Float(2) * C);
-        if (u1 >= Float(0) && u1 <= Float(1)) u = u1;
-        else if (u2 >= Float(0) && u2 <= Float(1)) u = u2;
-    }
-
-    Float denom = c_r + d_r * u;
-    if (abs(denom) > Float(1e-6))
-        v = -(a_r + b_r * u) / denom;
-
-    u = clamp(u, Float(0), Float(1));
-    v = clamp(v, Float(0), Float(1));
-
-    du_out[0] = u;
-    du_out[1] = v;
+    set_cross(m00, m10, m11, m01, du_out);
+    const Float u = du_out[0];
+    const Float v = du_out[1];
 
     // Bilinear interpolation
     auto interp = [u, v](std::complex<Float> a, std::complex<Float> b,

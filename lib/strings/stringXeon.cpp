@@ -1,7 +1,12 @@
 #include<cstdio>
 #include<cmath>
+#include<complex>
+#include<cstring>
+#include<type_traits>
 #include"scalar/scalarField.h"
+#include"scalar/folder.h"
 #include"enum-field.h"
+#include"comms/comms.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -1042,11 +1047,112 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	return	strDat;
 }
 
+#ifdef USE_2DCYL
+StringData stringKernelXeon2D(Scalar *field)
+{
+	/*
+	 * The generic Xeon kernel above assumes a periodic three-dimensional
+	 * lattice.  A cylindrical run is instead a non-periodic (z,rho) plane,
+	 * with z contiguous and rho distributed over MPI ranks.  Keep this first
+	 * implementation deliberately scalar: string finding is a measurement,
+	 * and correctness at the cylindrical boundaries matters much more than
+	 * vectorising this small two-dimensional scan.
+	 */
+	const bool wasFolded = field->Folded();
+	if (wasFolded) {
+		Folder unfold(field);
+		unfold(UNFOLD_ALL);
+	}
+
+	field->exchangeGhosts(FIELD_M);
+	field->setSD(SD_MAP);
+	memset(field->sData(), 0, field->Size());
+
+	const size_t NzAxis   = field->Length(); // cylindrical z coordinate
+	const size_t Nrho     = field->Depth();  // local radial rows
+	const size_t Ng       = field->getNg();
+	const bool hasRhoNext = (commRank() + 1 < commSize());
+	char *map = static_cast<char *>(field->sData());
+
+	size_t nStrings = 0;
+	long long nChiral = 0;
+
+	auto scan = [&](auto *base) {
+		using Complex = std::remove_reference_t<decltype(*base)>;
+		Complex *m = base + Ng*NzAxis;
+
+		/* Include the last local rho row when the next MPI rank supplies its
+		 * neighbour.  At the physical outer-rho boundary there is no wrapping
+		 * plaquette.  Likewise, z=NzAxis-1 has no forward plaquette. */
+		const size_t rhoPlaquettes = Nrho - (hasRhoNext ? 0 : 1);
+
+		#pragma omp parallel for reduction(+:nStrings,nChiral) schedule(static)
+		for (size_t ir = 0; ir < rhoPlaquettes; ++ir) {
+			for (size_t iz = 0; iz + 1 < NzAxis; ++iz) {
+				/* At z=0, form a full plaquette across the reflection plane from
+				 * z=-1 to z=+1.  The stored field obeys phi(-z)=conj(phi(z)).
+				 * An ordinary 0-to-1 plaquette contains only half the phase winding
+				 * and does not detect a loop centred exactly on the plane. */
+				Complex s1, s2, s3, s4;
+				if (iz == 0) {
+					s1 = std::conj(m[ ir   *NzAxis + 1]);
+					s2 = std::conj(m[(ir+1)*NzAxis + 1]);
+					s3 =           m[(ir+1)*NzAxis + 1];
+					s4 =           m[ ir   *NzAxis + 1];
+				} else {
+					/* Same rho--z orientation as the generic ZX plaquette. */
+					s1 = m[ ir   *NzAxis + iz    ];
+					s2 = m[(ir+1)*NzAxis + iz    ];
+					s3 = m[(ir+1)*NzAxis + iz + 1];
+					s4 = m[ ir   *NzAxis + iz + 1];
+				}
+
+				int hand = 0;
+				auto edge = [&](const Complex &a, const Complex &b) {
+					if ((a.imag() > 0) != (b.imag() > 0))
+						hand += (a*std::conj(b)).imag() > 0 ? 1 : -1;
+				};
+				edge(s1, s2); edge(s2, s3); edge(s3, s4); edge(s4, s1);
+
+				if (hand == 2) {
+					map[ir*NzAxis + iz] |= STRING_ZX_POSITIVE;
+					++nStrings;
+					++nChiral;
+				} else if (hand == -2) {
+					map[ir*NzAxis + iz] |= STRING_ZX_NEGATIVE;
+					++nStrings;
+					--nChiral;
+				}
+			}
+		}
+	};
+
+	if (field->Precision() == FIELD_DOUBLE)
+		scan(static_cast<std::complex<double> *>(field->mCpu()));
+	else
+		scan(static_cast<std::complex<float> *>(field->mCpu()));
+
+	if (wasFolded) {
+		Folder refold(field);
+		refold(FOLD_ALL);
+	}
+
+	StringData out{};
+	out.strDen = out.strDen_local = nStrings;
+	out.strChr = out.strChr_local = nChiral;
+	return out;
+}
+#endif
+
 StringData	stringCpu	(Scalar *field)
 {
+#ifdef USE_2DCYL
+	return stringKernelXeon2D(field);
+#else
 	const size_t S = field->Surf()*field->getNg();
 	const size_t V = field->Size();
 	field->exchangeGhosts(FIELD_M);
 	field->setSD(SD_MAP);
 	return (stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
+#endif
 }

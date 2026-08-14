@@ -1201,6 +1201,161 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 
 
 
+#ifdef USE_2DCYL
+template<typename Float>
+StringLoopParms stringlength3_2D(Scalar *field, StringData strDen)
+{
+	LogMsg(VERB_NORMAL, "[SL2] cylindrical string coordinates");
+
+	StringLoopParms slp;
+	slp.stringdata = strDen;
+
+	if (!(field->sDStatus() & SD_MAP) || strDen.strDen == 0)
+		return slp;
+
+	const bool wasFolded = field->Folded();
+	if (wasFolded) {
+		Folder unfold(field);
+		unfold(UNFOLD_ALL);
+	}
+	field->exchangeGhosts(FIELD_M);
+
+	const size_t NzAxis = field->Length();
+	const size_t Nrho   = field->Depth();
+	const size_t Ng     = field->getNg();
+	const size_t rho0   = static_cast<size_t>(commRank())*Nrho;
+	const bool hasRhoNext = commRank() + 1 < commSize();
+	const size_t rhoPlaquettes = Nrho - (hasRhoNext ? 0 : 1);
+	const char *map     = static_cast<const char *>(field->sData());
+	const auto *base    = static_cast<const std::complex<Float> *>(field->mCpu());
+	const auto *m       = base + Ng*NzAxis;
+	auto *v             = static_cast<std::complex<Float> *>(field->vCpu());
+
+	/* SAXION v is stored without a front ghost.  Exchange the final radial
+	 * row into the back-ghost slot, as in the 3D string-velocity path. */
+	if (hasRhoNext) {
+		const int rowBytes = static_cast<int>(NzAxis*field->DataSize());
+		void *sendFirst = field->vCpu();
+		void *recvNext  = static_cast<void *>(
+			static_cast<char *>(field->vCpu()) + field->Size()*field->DataSize());
+		void *sendLast  = static_cast<void *>(
+			static_cast<char *>(field->vCpu()) + (field->Size()-NzAxis)*field->DataSize());
+		field->sendGeneral(COMM_SDRV, rowBytes, MPI_BYTE,
+		                   sendFirst, recvNext, sendLast, sendLast);
+		field->sendGeneral(COMM_WAIT, rowBytes, MPI_BYTE,
+		                   sendFirst, recvNext, sendLast, sendLast);
+	}
+
+	const Float c = Float(0.41238);
+	const Float ms2 = static_cast<Float>(field->SaxionMassSq());
+	const Float scalePhi = Float(1)/static_cast<Float>(*field->RV());
+	const Float scaleVel = scalePhi*scalePhi;
+	const Float Hc = static_cast<Float>(field->HubbleConformal());
+
+	for (size_t ir = 0; ir < rhoPlaquettes; ++ir) {
+		for (size_t iz = 0; iz + 1 < NzAxis; ++iz) {
+			if (!(map[ir*NzAxis + iz] & STRING_ZX))
+				continue;
+
+			std::complex<Float> m00, m10, m11, m01;
+			std::complex<Float> v00, v10, v11, v01;
+			if (iz == 0) {
+				m00 = std::conj(m[ ir   *NzAxis + 1]);
+				m10 = std::conj(m[(ir+1)*NzAxis + 1]);
+				m11 =           m[(ir+1)*NzAxis + 1];
+				m01 =           m[ ir   *NzAxis + 1];
+				v00 = std::conj(v[ ir   *NzAxis + 1]);
+				v10 = std::conj(v[(ir+1)*NzAxis + 1]);
+				v11 =           v[(ir+1)*NzAxis + 1];
+				v01 =           v[ ir   *NzAxis + 1];
+			} else {
+				m00 = m[ ir   *NzAxis + iz    ];
+				m10 = m[(ir+1)*NzAxis + iz    ];
+				m11 = m[(ir+1)*NzAxis + iz + 1];
+				m01 = m[ ir   *NzAxis + iz + 1];
+				v00 = v[ ir   *NzAxis + iz    ];
+				v10 = v[(ir+1)*NzAxis + iz    ];
+				v11 = v[(ir+1)*NzAxis + iz + 1];
+				v01 = v[ ir   *NzAxis + iz + 1];
+			}
+
+			for (auto pair : {std::pair{&m00,&v00}, std::pair{&m10,&v10},
+			                  std::pair{&m11,&v11}, std::pair{&m01,&v01}}) {
+				*pair.second = scaleVel*(*pair.second - Hc*(*pair.first));
+				*pair.first *= scalePhi;
+			}
+
+			Float du[2], vgamma2 = 0;
+			set_cross_and_velocity(m00, m10, m11, m01,
+			                       v00, v10, v11, v01,
+			                       du, vgamma2, ms2, c);
+			const double velocity = std::sqrt(vgamma2/(Float(1) + vgamma2));
+			const double gamma = std::sqrt(Float(1) + vgamma2);
+			const double rho = static_cast<double>(rho0 + ir) + du[0];
+			double z = (iz == 0) ? 2.0*du[1] - 1.0
+			                         : static_cast<double>(iz) + du[1];
+			if (std::abs(z) < 1.e-12)
+				z = 0.;
+
+			const double length = 2.0*std::acos(-1.0)*rho;
+			slp.len.push_back(length);
+			slp.vel.push_back(velocity);
+			slp.gam.push_back(gamma);
+			slp.cub.push_back(1.);
+			slp.loop_sizes.push_back(1);
+			slp.loop_closed.push_back(1);
+			slp.loop_chiralities.push_back(
+				(map[ir*NzAxis + iz] & STRING_ZX_POSITIVE) ? int8_t(1) : int8_t(-1));
+			slp.loop_len_com.push_back(length);
+			slp.loop_com.insert(slp.loop_com.end(), {z, 0., rho});
+			slp.loop_origin.insert(slp.loop_origin.end(), {z, 0., rho});
+			slp.loop_coords.insert(slp.loop_coords.end(), {z, 0., rho});
+			slp.loop_inertia.insert(slp.loop_inertia.end(), 6, 0.);
+			slp.loop_inertia_eigs.insert(slp.loop_inertia_eigs.end(), 3, 0.);
+		}
+	}
+
+	const uint64_t nLocal = slp.loop_sizes.size();
+	uint64_t labelOffset = 0;
+	MPI_Exscan(&nLocal, &labelOffset, 1, MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
+	if (commRank() == 0)
+		labelOffset = 0;
+	slp.loop_offsets.resize(nLocal + 1);
+	for (uint64_t i = 0; i < nLocal; ++i) {
+		slp.loop_labels.push_back(static_cast<uint32_t>(labelOffset + i + 1));
+		slp.loop_offsets[i] = i;
+	}
+	slp.loop_offsets[nLocal] = nLocal;
+
+	double localLength = 0.;
+	double localWeightedVelocity = 0.;
+	double localWeightedGamma = 0.;
+	for (double length : slp.len)
+		localLength += length;
+	for (size_t i = 0; i < slp.len.size(); ++i) {
+		localWeightedVelocity += slp.len[i]*slp.vel[i];
+		localWeightedGamma += slp.len[i]*slp.gam[i];
+	}
+	double localTotals[3] = {localLength, localWeightedVelocity, localWeightedGamma};
+	double globalTotals[3] = {};
+	MPI_Allreduce(localTotals, globalTotals, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	slp.stringdata.strLen_local = localLength;
+	slp.stringdata.strLen = globalTotals[0];
+	if (globalTotals[0] > 0.) {
+		slp.stringdata.strVel = globalTotals[1]/globalTotals[0];
+		slp.stringdata.strGam = globalTotals[2]/globalTotals[0];
+		slp.stringdata.strDeng = slp.stringdata.strGam;
+	}
+
+	if (wasFolded) {
+		Folder refold(field);
+		refold(FOLD_ALL);
+	}
+
+	return slp;
+}
+#endif
+
 StringLoopParms stringlength3 (Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
 
@@ -1208,6 +1363,12 @@ StringLoopParms stringlength3 (Scalar *field, StringData strDen_in, StringMeasur
 	prof.start();
 
 	StringLoopParms slp;
+#ifdef USE_2DCYL
+	if (field->Precision() == FIELD_SINGLE)
+		slp = stringlength3_2D<float>(field, strDen_in);
+	else
+		slp = stringlength3_2D<double>(field, strDen_in);
+#else
 	if (field->Precision() == FIELD_SINGLE)
 	{
 		slp = stringlength3<float> (field, strDen_in, strmeas);
@@ -1216,6 +1377,7 @@ StringLoopParms stringlength3 (Scalar *field, StringData strDen_in, StringMeasur
 	{
 		slp = stringlength3<double>(field, strDen_in, strmeas);
 	}
+#endif
 
 	prof.stop();
 	prof.add("String Length 3",0,0);

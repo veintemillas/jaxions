@@ -977,6 +977,7 @@
 				std::vector<uint64_t> loop_sizes;    // N loops
 				std::vector<uint64_t> loop_offsets;  // N+1 (prefix sum of sizes)
 				std::vector<uint8_t>  loop_closed;   // N loops, 0/1
+				std::vector<int8_t>   loop_chiralities; // N loops, -1/+1 in 2DCYL
 				std::vector<double>   loop_origin;   // 3*N
 				std::vector<double>   loop_coords;   // 3*M where M = sum(sizes)
 
