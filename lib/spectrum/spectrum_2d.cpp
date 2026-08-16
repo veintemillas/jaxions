@@ -75,7 +75,8 @@ inline void accumulateZ(double *output, const Float *input, double coefficient,
 
 template<typename Float>
 std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
-                                                       int component)
+                                                       int component,
+                                                       SpectrumMaskType mask)
 {
 	Scalar *field = spectrum.field;
 	if (spectrum.fType != FIELD_SAXION) {
@@ -127,6 +128,18 @@ std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
 	for (size_t irho = 0; irho < NrLocal; ++irho) {
 		Float *row = m2 + irho*axialStride;
 		const size_t ghostRow = irho + ghosts;
+		auto maskWeight = [mask, scaleFactor] (const std::complex<Float> &center) {
+			/* Match the VIL/VIL2 definitions used by the Cartesian builders:
+			 * VIL weights d(theta) by |phi|/R, and VIL2 by |phi|^2/R^2. */
+			switch (mask) {
+				case SPMASK_VIL:
+					return std::abs(center)/scaleFactor;
+				case SPMASK_VIL2:
+					return std::norm(center)/(scaleFactor*scaleFactor);
+				default:
+					return Float(1);
+			}
+		};
 		auto quotient = [] (const std::complex<Float> &center,
 		                    const std::complex<Float> &difference) {
 			const Float denominator = std::norm(center);
@@ -140,16 +153,16 @@ std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
 				const auto phi1 = mWithGhosts[ghostRow*Nz + 1];
 				const auto endpoint = mWithGhosts[ghostRow*Nz + Nz - 1];
 				const auto inside = mWithGhosts[ghostRow*Nz + Nz - 2];
-			row[0] = scaleFactor*quotient(phi0, phi1 - std::conj(phi1))/
+			row[0] = maskWeight(phi0)*scaleFactor*quotient(phi0, phi1 - std::conj(phi1))/
 				Float(2*delta);
 				for (size_t iz = 1; iz + 1 < Nz; ++iz) {
 					const auto center = mWithGhosts[ghostRow*Nz + iz];
 					const auto plus = mWithGhosts[ghostRow*Nz + iz + 1];
 				const auto difference = plus -
 					mWithGhosts[ghostRow*Nz + iz - 1];
-				row[iz] = scaleFactor*quotient(center, difference)/Float(2*delta);
+				row[iz] = maskWeight(center)*scaleFactor*quotient(center, difference)/Float(2*delta);
 			}
-				row[Nz - 1] = scaleFactor*quotient(endpoint,
+				row[Nz - 1] = maskWeight(endpoint)*scaleFactor*quotient(endpoint,
 					std::conj(inside) - inside)/Float(2*delta);
 			continue;
 		}
@@ -167,7 +180,7 @@ std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
 					const auto outside = lastRadialRank && irho + 1 == NrLocal
 						? center /* even reflection about rho=NrGlobal-1/2 */
 						: mWithGhosts[(ghostRow + 1)*Nz + iz];
-					row[iz - 1] = scaleFactor*quotient(center, outside - inside)/
+					row[iz - 1] = maskWeight(center)*scaleFactor*quotient(center, outside - inside)/
 						Float(2*delta);
 				}
 			} else {
@@ -177,7 +190,8 @@ std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
 				const Float vi = v[2*id + 1];
 				const Float mod2 = phir*phir + phii*phii;
 				const Float angularVelocity = vi*phir - vr*phii;
-				row[iz - 1] = scaleFactor*(mod2 > Float(0)
+				const std::complex<Float> center(phir, phii);
+				row[iz - 1] = maskWeight(center)*scaleFactor*(mod2 > Float(0)
 					? angularVelocity/mod2 : angularVelocity);
 			}
 		}
@@ -623,8 +637,8 @@ void CylindricalSpectrum::modeData(SpecBin &spectrum)
 
 void CylindricalSpectrum::nRun(SpecBin &spectrum, SpectrumMaskType mask, nRunType nrt)
 {
-	if (mask != SPMASK_FLAT) {
-		LogError("[2Dcyl spectrum] Only the unmasked spectrum is implemented.");
+	if (mask != SPMASK_FLAT && mask != SPMASK_VIL && mask != SPMASK_VIL2) {
+		LogError("[2Dcyl spectrum] Requested mask is not implemented.");
 		return;
 	}
 	if (!(nrt & (NRUN_K | NRUN_G)))
@@ -636,20 +650,20 @@ void CylindricalSpectrum::nRun(SpecBin &spectrum, SpectrumMaskType mask, nRunTyp
 	switch (spectrum.fPrec) {
 		case FIELD_SINGLE:
 			if (nrt & NRUN_K)
-				spectrum.binK = runComponent<float>(spectrum, CYL_KINETIC);
+				spectrum.binK = runComponent<float>(spectrum, CYL_KINETIC, mask);
 			if (nrt & NRUN_G) {
-				spectrum.binG = runComponent<float>(spectrum, CYL_GRADIENT_Z);
-				const auto radial = runComponent<float>(spectrum, CYL_GRADIENT_RHO);
+				spectrum.binG = runComponent<float>(spectrum, CYL_GRADIENT_Z, mask);
+				const auto radial = runComponent<float>(spectrum, CYL_GRADIENT_RHO, mask);
 				for (size_t bin = 0; bin < spectrum.binG.size(); ++bin)
 					spectrum.binG[bin] += radial[bin];
 			}
 			break;
 		case FIELD_DOUBLE:
 			if (nrt & NRUN_K)
-				spectrum.binK = runComponent<double>(spectrum, CYL_KINETIC);
+				spectrum.binK = runComponent<double>(spectrum, CYL_KINETIC, mask);
 			if (nrt & NRUN_G) {
-				spectrum.binG = runComponent<double>(spectrum, CYL_GRADIENT_Z);
-				const auto radial = runComponent<double>(spectrum, CYL_GRADIENT_RHO);
+				spectrum.binG = runComponent<double>(spectrum, CYL_GRADIENT_Z, mask);
+				const auto radial = runComponent<double>(spectrum, CYL_GRADIENT_RHO, mask);
 				for (size_t bin = 0; bin < spectrum.binG.size(); ++bin)
 					spectrum.binG[bin] += radial[bin];
 			}

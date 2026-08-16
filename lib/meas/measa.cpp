@@ -769,10 +769,19 @@ writePMapHdf5s (axiona, LAB);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
 
+						bool selfContainedMask = axiona->Field() == FIELD_PAXION;
+#ifdef USE_2DCYL
+						/* Cylindrical VIL masks are applied directly to each angular
+						 * derivative in nRun; the Cartesian mask-map builder assumes a
+						 * three-dimensional layout and must not be called here. */
+						selfContainedMask = selfContainedMask ||
+							maskara[i] == SPMASK_VIL || maskara[i] == SPMASK_VIL2;
+#endif
 						// The masker() builds/prints the mask map via the axion/saxion
 						// machinery; it is not defined for the paxion field, whose
-						// AXITV spectrum is self-contained inside nRun. Skip it there.
-						if (prntmsk[i] && axiona->Field() != FIELD_PAXION){
+						// AXITV spectrum is self-contained inside nRun. Cylindrical
+						// VIL/VIL2 spectra are self-contained for the same reason.
+						if (prntmsk[i] && !selfContainedMask){
 							if (mulmask[i]){
 								LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							} else {

@@ -17,7 +17,8 @@ public:
 
 private:
 	template<typename Float>
-	static std::vector<double> runComponent(SpecBin &spectrum, int component);
+	static std::vector<double> runComponent(SpecBin &spectrum, int component,
+	                                        SpectrumMaskType mask);
 };
 
 #endif
