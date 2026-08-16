@@ -69,6 +69,8 @@
 			FOLD_M2,
 			UNFOLD_M2,
 			UNFOLD_SLICEM2,
+			FOLD_M2_AS_CMPLX,
+			UNFOLD_M2_AS_CMPLX,
 		}	FoldType;
 
 		typedef	enum	StringType_s
@@ -537,6 +539,8 @@
 			FFT_RtoC_M2StoM2S  = 19,
 			FFT1D_RtoR_M2toM2  = 20,
 			FFT_TRANSPOSE_R2R_M2toM2 = 21,
+			FFT1D_DCT_M2toM2   = 22,
+			FFT_TRANSPOSE_DCT_M2toM2 = 23,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {
@@ -848,6 +852,7 @@
 			bool                measCPU;
 			double              cTimesec;
 			int                 propstep;
+			double              deltaCt;     // actual step immediately before this measurement
 			int                 cummask;
 			PrintConf           printconf;
 			bool                maskenergyonly;
@@ -922,6 +927,7 @@
 			AxitonInfo    axtinfo;
 			bool          randommom;
 			bool          uEvolAll;
+			bool          uDampNone;
 			bool          linmodevol;
 			bool          lme_no_rhs;
 			bool          km_use_mv_a_data;

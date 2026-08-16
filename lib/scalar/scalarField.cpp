@@ -19,6 +19,7 @@
 	#include<cuda.h>
 	#include<cuda_runtime.h>
 	#include "cudaErrors.h"
+	#include "scalar/adaptiveTimeGpu.h"
 #endif
 
 #include<mpi.h>
@@ -1114,11 +1115,11 @@ void	Scalar::ghostcylindricalpatch(FieldIndex fIdx)
 		}
 	} // end RHO=0 BC
 
-	if (commRank() == commSize()-1){ // only the last rank will have absorbing boundaries
+	if (commRank() == commSize()-1){ // reflect evenly about outer face rho=Tz-1/2
 		if (fIdx == FIELD_M)
 		{
 			for (int nv =1; nv <= Ng; nv++){
-				from = static_cast<void *> (static_cast<char *> (mStart())      + (Nz-1) * ghostsurfBytes);
+					from = static_cast<void *> (static_cast<char *> (mStart())      + (Nz-nv) * ghostsurfBytes);
 				to   = static_cast<void *> (static_cast<char *> (mBackGhost()) + ghostsurfBytes*(nv-1));
 				memcpy(to, from, ghostsurfBytes);
 			}
@@ -1126,7 +1127,7 @@ void	Scalar::ghostcylindricalpatch(FieldIndex fIdx)
 		else if (fIdx == FIELD_M2)
 		{
 			for (int nv =1; nv <= Ng; nv++){
-				from = static_cast<void *> (static_cast<char *> (m2Start())      + (Nz-1) * ghostsurfBytes);
+					from = static_cast<void *> (static_cast<char *> (m2Start())      + (Nz-nv) * ghostsurfBytes);
 				to   = static_cast<void *> (static_cast<char *> (m2BackGhost()) + ghostsurfBytes*(nv-1));
 				memcpy(to, from, ghostsurfBytes);
 			}
@@ -1143,6 +1144,23 @@ LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	sendGhosts2(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
+}
+
+void Scalar::exchangeGhostsM2AsComplex()
+{
+	const size_t complexSize = 2*fSize;
+	const size_t ghostBytes = Ng*Nxy*complexSize;
+	char *base = static_cast<char *>(m2Cpu());
+	char *physical = base + ghostBytes;
+	char *backGhost = physical + Nxyz*complexSize;
+	char *lastPhysical = physical + (Nxyz - Ng*Nxy)*complexSize;
+
+	LogMsg(VERB_PARANOID,
+	       "[sca] Exchange complex M2 ghosts, ghostBytes %lu", ghostBytes);
+	Scalar::sendGeneral(COMM_SDRV, ghostBytes, MPI_BYTE,
+	                    physical, backGhost, lastPhysical, base);
+	Scalar::sendGeneral(COMM_WAIT, ghostBytes, MPI_BYTE,
+	                    physical, backGhost, lastPhysical, base);
 }
 
 /* For sending 1st slice from string data backwards */
@@ -1616,6 +1634,12 @@ double	Scalar::dct_Adaptive	   () {
 		LogMsg(VERB_HIGH,"[sca] dt re-evaluation (%d)",_adaptive_time_next_eval);
 	}
 
+#ifdef USE_2DCYL
+	/* The cylindrical collapse is localized on the physical z=0 line and can
+	 * change faster than the generic cached nonlinear estimate. */
+	nonlinear = true;
+#endif
+
 	// generic things we might need
 	double ct   = *zV();
 	double R    = Rfromct(ct);
@@ -1643,19 +1667,46 @@ double	Scalar::dct_Adaptive	   () {
 
 			if (nonlinear){
 #ifdef USE_GPU
+			#ifdef USE_2DCYL
+			/* z=0 belongs to rank zero; reduce its maxima on the device. */
+			#else
 			this->transferCpu(FIELD_MV);
+			#endif
+#endif
+			const size_t adaptive_points =
+#ifdef USE_2DCYL
+				(commRank() == 0 ? Nx : 0);
+#else
+				Nxyz;
+#endif
+			double gpu_phi2_max = 0.0, gpu_velocity_max = 0.0;
+			bool gpu_line_max = false;
+#if defined(USE_GPU) && defined(USE_2DCYL)
+			if (device == DEV_GPU && commRank() == 0) {
+				const void *velocity_start = static_cast<const char *>(vGpu()) + Ng_v*Nxy*fSize;
+				adaptiveLineMaxGpu(mGpuStart(), velocity_start, Nx,
+				                    precision == FIELD_SINGLE,
+				                    static_cast<void *>(((cudaStream_t *)sStreams)[0]),
+				                    gpu_phi2_max, gpu_velocity_max);
+				gpu_line_max = true;
+			}
 #endif
 			if (precision == FIELD_SINGLE)
 			{
 				float *fieldc = static_cast<float*>(mStart());
 				float *fieldv = static_cast<float*>(vStart());
 				float max = 0.f, v_max = 0.f;
+				if (gpu_line_max) {
+					max = static_cast<float>(gpu_phi2_max);
+					v_max = static_cast<float>(gpu_velocity_max);
+				} else {
 				#pragma omp parallel for schedule(static) reduction(max:max, v_max) 
-				for (int i = 0 ; i < Nxyz; i++){
+				for (size_t i = 0 ; i < adaptive_points; i++){
 					float candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
 					float vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
 					max = std::max(max, candidate);
 					v_max = std::max(v_max, vandidate);
+				}
 				}
 				double phi2_veq = R*R + std::sqrt(2/lamP)*((double) v_max);
 				if (phi2_veq>9.0 || max > 9.0)
@@ -1671,12 +1722,17 @@ double	Scalar::dct_Adaptive	   () {
 				double *fieldc = static_cast<double*>(mStart());
 				double *fieldv = static_cast<double*>(vStart());
 				double max = 0.0, v_max = 0.0;
+				if (gpu_line_max) {
+					max = gpu_phi2_max;
+					v_max = gpu_velocity_max;
+				} else {
 				#pragma omp parallel for schedule(static) reduction(max:max,v_max)
-				for (int i = 0 ; i < Nxyz; i++){
+				for (size_t i = 0 ; i < adaptive_points; i++){
 					double candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
 					double vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
 					max = std::max(max, candidate);
 					v_max = std::max(v_max, vandidate);
+				}
 				}
 				double phi2_veq = R*R + std::sqrt(2/lamP)*(v_max);
 				if (phi2_veq>9.0 || max > 9.0)

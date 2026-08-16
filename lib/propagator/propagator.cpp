@@ -22,6 +22,7 @@ namespace {
 		switch (field) {
 			case FIELD_SAXION: return "Saxion";
 			case FIELD_AXION:  return "Axion";
+			case FIELD_AXION_MOD: return "Axion Mod";
 			case FIELD_NAXION: return "Naxion";
 			case FIELD_PAXION: return "Paxion";
 			default:           return "Unknown";
@@ -35,6 +36,7 @@ namespace {
 			case FIELD_AXION:  return 1;
 			case FIELD_NAXION: return 2;
 			case FIELD_PAXION: return 3;
+			case FIELD_AXION_MOD: return 4;
 			default:           return 999;
 		}
 	}

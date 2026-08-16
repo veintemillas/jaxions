@@ -88,3 +88,28 @@ void	theta2Cmplx	(Scalar *field)
 
 	return;
 }
+
+void theta2CmplxM2 (Scalar *field)
+{
+	if (field->LowMemGPU()) {
+		LogError("theta2CmplxM2 requires the complex m2 workspace\n");
+		return;
+	}
+
+	switch (field->Device())
+	{
+		case DEV_CPU:
+			th2cxM2Xeon(field);
+			break;
+		case DEV_GPU:
+#ifdef USE_GPU
+			th2cxM2Gpu(field);
+#else
+			LogError("Gpu support not built\n");
+#endif
+			break;
+		default:
+			LogError("Not a valid device\n");
+	}
+	field->setM2(M2_DIRTY);
+}

@@ -4,4 +4,5 @@
 	#include "scalar/scalarField.h"
 
 	void	th2cxGpu (Scalar *sField);
+	void	th2cxM2Gpu (Scalar *sField);
 #endif

@@ -1,6 +1,8 @@
 #ifndef _CYLINDRICAL_SPECTRUM_
 #define _CYLINDRICAL_SPECTRUM_
 
+#include <vector>
+
 #include "enum-field.h"
 
 class SpecBin;
@@ -15,7 +17,8 @@ public:
 
 private:
 	template<typename Float>
-	static void runKinetic(SpecBin &spectrum);
+	static std::vector<double> runComponent(SpecBin &spectrum, int component,
+	                                        SpectrumMaskType mask);
 };
 
 #endif

@@ -190,6 +190,8 @@
 #ifdef USE_2DCYL
 				AxionFFT::initPlan (field, FFT1D_RtoR_M2toM2,  FFT_FWD, "spec1Dm2");
 				AxionFFT::initPlan (field, FFT_TRANSPOSE_R2R_M2toM2,  FFT_FWD, "transpose");
+				AxionFFT::initPlan (field, FFT1D_DCT_M2toM2, FFT_FWD, "spec1DGradientZ");
+				AxionFFT::initPlan (field, FFT_TRANSPOSE_DCT_M2toM2, FFT_FWD, "transposeGradientZ");
 #else
 				LogMsg(VERB_HIGH,"[spe] Preparing FFT plan pSpecAx for R2C");
 				AxionFFT::initPlan (field, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");

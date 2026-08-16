@@ -3,5 +3,5 @@
 
 	#include "scalar/scalarField.h"
 
-	void	cmplxToTheta	(Scalar *field, const double shift=0, const bool wMod=false);
+	void	cmplxToTheta	(Scalar *field, const double shift=0, const bool wMod=false, const bool doMend=true);
 #endif

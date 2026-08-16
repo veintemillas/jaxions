@@ -16,6 +16,7 @@
 
 #include "comms/comms.h"
 #include "fft/fftCode.h"
+#include "io/readWrite.h"
 #include "scalar/scalarField.h"
 #include "spectrum/J0tabler.h"
 #include "spectrum/spectrum.h"
@@ -23,6 +24,12 @@
 #include "utils/parse.h"
 
 namespace {
+
+enum CylComponent {
+	CYL_KINETIC = 0,
+	CYL_GRADIENT_Z = 1,
+	CYL_GRADIENT_RHO = 2
+};
 
 template<typename Float>
 inline void accumulateZ(double *output, const Float *input, double coefficient,
@@ -67,16 +74,22 @@ inline void accumulateZ(double *output, const Float *input, double coefficient,
 } // namespace
 
 template<typename Float>
-void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
+std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
+                                                       int component,
+                                                       SpectrumMaskType mask)
 {
 	Scalar *field = spectrum.field;
 	if (spectrum.fType != FIELD_SAXION) {
-		LogError("[2Dcyl spectrum] Kinetic spectrum currently supports FIELD_SAXION only.");
-		return;
+		LogError("[2Dcyl spectrum] Kinetic/gradient spectra currently support FIELD_SAXION only.");
+		return {};
 	}
 
-	auto &zPlan = AxionFFT::fetchPlan("spec1Dm2");
-	auto &transposePlan = AxionFFT::fetchPlan("transpose");
+	const bool axialGradient = component == CYL_GRADIENT_Z;
+	const bool radialGradient = component == CYL_GRADIENT_RHO;
+	auto &zPlan = AxionFFT::fetchPlan(axialGradient
+		? "spec1DGradientZ" : "spec1Dm2");
+	auto &transposePlan = AxionFFT::fetchPlan(axialGradient
+		? "transposeGradientZ" : "transpose");
 
 	auto *m  = static_cast<Float *>(field->mStart());
 	auto *v  = static_cast<Float *>(field->vCpu());
@@ -87,41 +100,150 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 	const size_t NrGlobal = field->TZ();
 	const double delta = field->Delta();
 	const Float scaleFactor = Float(*field->RV());
+	const size_t axialStride = axialGradient ? Nz : Nz - 1;
 	LogMsg(VERB_HIGH, "[2Dcyl spectrum] begin Nz=%zu NrLocal=%zu NrGlobal=%zu",
 		Nz, NrLocal, NrGlobal);
 
-	if (Nz < 2 || NrGlobal == 0) {
+	if (Nz < 3 || NrGlobal == 0) {
 		LogError("[2Dcyl spectrum] Invalid lattice dimensions Nz=%zu Nr=%zu.", Nz, NrGlobal);
-		return;
+		return {};
 	}
 
-	/* Build theta-dot directly in its batched DST row layout. */
-	LogMsg(VERB_HIGH, "[2Dcyl spectrum] DST-I transforming %zu local rows", NrLocal);
+	/* Build each component directly in its axial-transform row layout.  The
+	 * complex-field quotient is the same branch-safe definition used by the
+	 * ordinary Jaxions kinetic/gradient builders:
+	 *
+	 *        d_i theta = Im(conj(phi) d_i phi)/|phi|^2 .
+	 *
+	 * K and G_rho are odd in z (DST-I); G_z is even (DCT-I). */
+	if (component != CYL_KINETIC)
+		field->exchangeGhosts(FIELD_M);
+	auto *mWithGhosts = reinterpret_cast<std::complex<Float> *>(field->mCpu());
+	const size_t ghosts = field->getNg();
+	const bool firstRadialRank = commRank() == 0;
+	const bool lastRadialRank = commRank() == commSize() - 1;
+	LogMsg(VERB_HIGH, "[2Dcyl spectrum] %s transforming %zu local rows",
+		axialGradient ? "DCT-I" : "DST-I", NrLocal);
 	#pragma omp parallel for schedule(static)
 	for (size_t irho = 0; irho < NrLocal; ++irho) {
-		Float *row = m2 + irho*Nz;
-		/* Z=0 is exactly zero and is not part of the DST-I input. */
-		for (size_t iz = 1; iz < Nz; ++iz) {
-			const size_t id = irho*Nz + iz;
-			const Float phir = m[2*id];
-			const Float phii = m[2*id + 1];
-			const Float vr = v[2*id];
-			const Float vi = v[2*id + 1];
-			const Float mod2 = phir*phir + phii*phii;
-			const Float angularVelocity = vi*phir - vr*phii;
-			/* Match buildc_k: Jaxions' kinetic spectrum transforms R*thetaDot,
-			 * not the unscaled angular velocity thetaDot. */
-			row[iz - 1] = scaleFactor*(mod2 > Float(0)
-				? angularVelocity/mod2 : angularVelocity);
+		Float *row = m2 + irho*axialStride;
+		const size_t ghostRow = irho + ghosts;
+		auto maskWeight = [mask, scaleFactor] (const std::complex<Float> &center) {
+			/* Match the VIL/VIL2 definitions used by the Cartesian builders:
+			 * VIL weights d(theta) by |phi|/R, and VIL2 by |phi|^2/R^2. */
+			switch (mask) {
+				case SPMASK_VIL:
+					return std::abs(center)/scaleFactor;
+				case SPMASK_VIL2:
+					return std::norm(center)/(scaleFactor*scaleFactor);
+				default:
+					return Float(1);
+			}
+		};
+		auto quotient = [] (const std::complex<Float> &center,
+		                    const std::complex<Float> &difference) {
+			const Float denominator = std::norm(center);
+			const Float numerator = std::imag(std::conj(center)*difference);
+			return denominator > Float(0) ? numerator/denominator : numerator;
+		};
+
+		if (axialGradient) {
+				/* z=0 and z=Nz-1 are fixed points of conjugate reflection. */
+				const auto phi0 = mWithGhosts[ghostRow*Nz];
+				const auto phi1 = mWithGhosts[ghostRow*Nz + 1];
+				const auto endpoint = mWithGhosts[ghostRow*Nz + Nz - 1];
+				const auto inside = mWithGhosts[ghostRow*Nz + Nz - 2];
+			row[0] = maskWeight(phi0)*scaleFactor*quotient(phi0, phi1 - std::conj(phi1))/
+				Float(2*delta);
+				for (size_t iz = 1; iz + 1 < Nz; ++iz) {
+					const auto center = mWithGhosts[ghostRow*Nz + iz];
+					const auto plus = mWithGhosts[ghostRow*Nz + iz + 1];
+				const auto difference = plus -
+					mWithGhosts[ghostRow*Nz + iz - 1];
+				row[iz] = maskWeight(center)*scaleFactor*quotient(center, difference)/Float(2*delta);
+			}
+				row[Nz - 1] = maskWeight(endpoint)*scaleFactor*quotient(endpoint,
+					std::conj(inside) - inside)/Float(2*delta);
+			continue;
 		}
-		row[Nz - 1] = Float(0); // transpose padding column
+
+			/* z=0 and z=Nz-1 vanish for odd channels and are omitted by DST-I. */
+			for (size_t iz = 1; iz + 1 < Nz; ++iz) {
+			const size_t id = irho*Nz + iz;
+			if (radialGradient) {
+				const auto center = mWithGhosts[ghostRow*Nz + iz];
+				if (firstRadialRank && irho == 0) {
+					/* Cylindrical regularity: d_rho theta vanishes at the axis. */
+					row[iz - 1] = Float(0);
+				} else {
+					const auto inside = mWithGhosts[(ghostRow - 1)*Nz + iz];
+					const auto outside = lastRadialRank && irho + 1 == NrLocal
+						? center /* even reflection about rho=NrGlobal-1/2 */
+						: mWithGhosts[(ghostRow + 1)*Nz + iz];
+					row[iz - 1] = maskWeight(center)*scaleFactor*quotient(center, outside - inside)/
+						Float(2*delta);
+				}
+			} else {
+				const Float phir = m[2*id];
+				const Float phii = m[2*id + 1];
+				const Float vr = v[2*id];
+				const Float vi = v[2*id + 1];
+				const Float mod2 = phir*phir + phii*phii;
+				const Float angularVelocity = vi*phir - vr*phii;
+				const std::complex<Float> center(phir, phii);
+				row[iz - 1] = maskWeight(center)*scaleFactor*(mod2 > Float(0)
+					? angularVelocity/mod2 : angularVelocity);
+			}
+		}
+			row[Nz - 2] = Float(0); // DST transpose padding column
+	}
+
+	/* Diagnostic map for the cylindrical radial-gradient spectrum.  Preserve
+	 * the real-space d_rho theta values before the axial DST overwrites m2.
+	 * The saved one-dimensional array is ordered (rho,z), including the two
+	 * identically-zero odd-channel z endpoints, and can be reshaped using the
+	 * measurement file's Depth and Size attributes. */
+	if (radialGradient && debug) {
+		const size_t localMapSize = NrLocal*Nz;
+		std::vector<double> localMap(localMapSize, 0.0);
+		#pragma omp parallel for schedule(static)
+		for (size_t irho = 0; irho < NrLocal; ++irho)
+			for (size_t iz = 1; iz + 1 < Nz; ++iz)
+				localMap[irho*Nz + iz] =
+					double(m2[irho*axialStride + iz - 1]);
+
+		const int ranks = commSize();
+		std::vector<unsigned long long> rowCounts(size_t(ranks), 0);
+		const unsigned long long localRows = NrLocal;
+		MPI_Allgather(&localRows, 1, MPI_UNSIGNED_LONG_LONG,
+			rowCounts.data(), 1, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+		std::vector<int> receiveCounts(size_t(ranks), 0);
+		std::vector<int> receiveDisplacements(size_t(ranks), 0);
+		size_t mapSize = 0;
+		for (int rank = 0; rank < ranks; ++rank) {
+			const size_t count = size_t(rowCounts[size_t(rank)])*Nz;
+			if (count > size_t(INT_MAX) || mapSize > size_t(INT_MAX)) {
+				LogError("[2Dcyl spectrum] partialRhoTheta map exceeds MPI_Gatherv limits.");
+				return {};
+			}
+			receiveCounts[size_t(rank)] = int(count);
+			receiveDisplacements[size_t(rank)] = int(mapSize);
+			mapSize += count;
+		}
+		std::vector<double> globalMap(commRank() == 0 ? mapSize : 0);
+		MPI_Gatherv(localMap.data(), int(localMapSize), MPI_DOUBLE,
+			globalMap.data(), receiveCounts.data(), receiveDisplacements.data(),
+			MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		writeArray(globalMap.data(), mapSize, "/cylSpectrum", "partialRhoTheta");
 	}
 	zPlan.run(FFT_FWD);
 	LogMsg(VERB_HIGH, "[2Dcyl spectrum] axial transforms completed");
 
 	const size_t Nkrho = NrGlobal;
-	const double dkz = M_PI/(double(Nz)*delta);
+	const double dkz = M_PI/(double(Nz - 1)*delta);
 	const double dkrho = M_PI/(double(NrGlobal)*delta);
+	const size_t axialModeCount = axialGradient ? Nz : Nz - 2;
+	const size_t axialModeOffset = axialGradient ? 0 : 1;
 	const double kFundamental = spectrum.k0;
 	const bool useCutoff = specKMax >= 0;
 	const double kCut = useCutoff ? double(specKMax)*kFundamental : 0.0;
@@ -136,8 +258,8 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 		std::vector<uint64_t> workByRank(size_t(ranks), 0);
 
 		/* Largest-work-first assignment with a hard per-rank memory cap. */
-		for (size_t mode = 0; mode + 1 < Nz; ++mode) {
-			const double kz = dkz*double(mode + 1);
+		for (size_t mode = 0; mode < axialModeCount; ++mode) {
+			const double kz = dkz*double(mode + axialModeOffset);
 			if (kz > kCut)
 				break;
 			const double radialSquared = std::max(0.0, kCut*kCut - kz*kz);
@@ -154,7 +276,7 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 			}
 			if (owner < 0) {
 				LogError("[2Dcyl spectrum] Balanced kz distribution exceeds m2half capacity.");
-				return;
+				return {};
 			}
 			modesByRank[size_t(owner)].push_back(mode);
 			workByRank[size_t(owner)] += radialModes;
@@ -172,7 +294,7 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 		if (localKzSize*NrGlobal > field->NXYZg()) {
 			LogError("[2Dcyl spectrum] Balanced receive needs %zu values; m2half holds %zu.",
 				localKzSize*NrGlobal, field->NXYZg());
-			return;
+			return {};
 		}
 
 		std::vector<unsigned long long> rhoCounts(static_cast<size_t>(ranks));
@@ -202,7 +324,8 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 			MPI_Datatype selectedRow, selectedRows;
 			MPI_Type_create_hindexed_block(int(modes.size()), 1,
 				displacements.data(), baseType, &selectedRow);
-			MPI_Type_create_hvector(int(NrLocal), 1, MPI_Aint(Nz*sizeof(Float)),
+			MPI_Type_create_hvector(int(NrLocal), 1,
+				MPI_Aint(axialStride*sizeof(Float)),
 				selectedRow, &selectedRows);
 			MPI_Type_commit(&selectedRows);
 			MPI_Type_free(&selectedRow);
@@ -218,7 +341,7 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 			if (count > INT_MAX || displacement > INT_MAX) {
 				LogError("[2Dcyl spectrum] MPI_Alltoallw count/displacement exceeds INT_MAX.");
 				for (MPI_Datatype type : createdTypes) MPI_Type_free(&type);
-				return;
+				return {};
 			}
 			recvCounts[size_t(source)] = int(count);
 			recvDisplacements[size_t(source)] = int(displacement);
@@ -238,20 +361,20 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 		/* Full-spectrum fallback through FFTW's equal-size transpose. */
 		ptrdiff_t localNr = 0, rhoOffset = 0, localKz = 0, kzOffset = 0;
 		const ptrdiff_t transposeElements = fftw_mpi_local_size_2d_transposed(
-			static_cast<ptrdiff_t>(NrGlobal), static_cast<ptrdiff_t>(Nz),
+			static_cast<ptrdiff_t>(NrGlobal), static_cast<ptrdiff_t>(axialStride),
 			MPI_COMM_WORLD, &localNr, &rhoOffset, &localKz, &kzOffset);
 		LogMsg(VERB_HIGH, "[2Dcyl spectrum] transpose layout: required=%td "
 		       "input=(%td@%td)x%zu output=(%td@%td)x%zu",
-		       transposeElements, localNr, rhoOffset, Nz, localKz, kzOffset,
+		       transposeElements, localNr, rhoOffset, axialStride, localKz, kzOffset,
 		       NrGlobal);
 		transposePlan.run(FFT_FWD);
 		localKzSize = size_t(localKz);
 		if (localKzSize*NrGlobal > field->NXYZg()) {
 			LogError("[2Dcyl spectrum] Local transpose exceeds m2half capacity.");
-			return;
+			return {};
 		}
 		for (size_t local = 0; local < localKzSize; ++local)
-			if (kzOffset + ptrdiff_t(local) < ptrdiff_t(Nz - 1))
+			if (kzOffset + ptrdiff_t(local) < ptrdiff_t(axialModeCount))
 				localKzModes.push_back(size_t(kzOffset) + local);
 
 		constexpr size_t transposeTile = 32;
@@ -275,31 +398,40 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 		size_t(std::floor(kCut/dkrho)) + 1) : Nkrho;
 
 #ifdef USE_CYL_J0_VECTOR_CACHE
-	static const std::vector<Float> j0Table = getJ0Table<Float>(
-		NrGlobal, Nkrho, 0, delta, dkrho, commRank());
-	LogMsg(VERB_HIGH, "[2Dcyl spectrum] full J0 vector ready: %zu coefficients "
-	       "dkz=%.8e dkrho=%.8e", j0Table.size(), dkz, dkrho);
+	std::vector<Float> besselTable(NrGlobal*Nkrho);
+	#pragma omp parallel for schedule(static)
+	for (size_t ikrho = 0; ikrho < Nkrho; ++ikrho)
+		for (size_t irho = 0; irho < NrGlobal; ++irho) {
+			const double argument = dkrho*double(ikrho*irho)*delta;
+			besselTable[ikrho*NrGlobal + irho] = Float(double(irho)*delta*
+				(radialGradient ? ::j1(argument) : ::j0(argument)));
+		}
+	LogMsg(VERB_HIGH, "[2Dcyl spectrum] full J%d vector ready: %zu coefficients "
+	       "dkz=%.8e dkrho=%.8e", radialGradient ? 1 : 0,
+	       besselTable.size(), dkz, dkrho);
 #else
 	/* The field now lives in m2half, so m2 is free for the product cache. */
-	Float *j0Cache = m2;
+	Float *besselCache = m2;
 	const size_t cacheCapacity = field->NXYZg();
 	const size_t maxProduct = (NrGlobal - 1)*(workKrhoCount - 1);
 	const size_t cacheSize = std::min(cacheCapacity, maxProduct + 1);
 	const double asymptoticFrom = M_PI*double(cacheSize)/double(NrGlobal);
 	char cacheName[256];
 	std::snprintf(cacheName, sizeof(cacheName),
-		"out/J0product.N%zu.C%zu.F%zu.bin", NrGlobal, cacheSize, sizeof(Float));
+		"out/J%dproduct.N%zu.C%zu.F%zu.bin", radialGradient ? 1 : 0,
+		NrGlobal, cacheSize, sizeof(Float));
 	bool cacheLoaded = false;
 	if (commRank() == 0) {
 		cacheLoaded = loadJ0ProductCache(
-			cacheName, j0Cache, NrGlobal, cacheSize);
+			cacheName, besselCache, NrGlobal, cacheSize);
 		if (!cacheLoaded) {
 			#pragma omp parallel for schedule(static)
 			for (size_t product = 0; product < cacheSize; ++product)
-				j0Cache[product] = Float(
-					::j0(M_PI*double(product)/double(NrGlobal)));
+				besselCache[product] = Float(radialGradient
+					? ::j1(M_PI*double(product)/double(NrGlobal))
+					: ::j0(M_PI*double(product)/double(NrGlobal)));
 			if (!saveJ0ProductCache(
-				cacheName, j0Cache, NrGlobal, cacheSize))
+				cacheName, besselCache, NrGlobal, cacheSize))
 				LogError("[2Dcyl spectrum] Could not save J0 product cache %s.",
 					cacheName);
 		}
@@ -307,17 +439,19 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 	MPI_Barrier(MPI_COMM_WORLD);
 	if (commRank() != 0) {
 		cacheLoaded = loadJ0ProductCache(
-			cacheName, j0Cache, NrGlobal, cacheSize);
+			cacheName, besselCache, NrGlobal, cacheSize);
 		if (!cacheLoaded) {
 			#pragma omp parallel for schedule(static)
 			for (size_t product = 0; product < cacheSize; ++product)
-				j0Cache[product] = Float(
-					::j0(M_PI*double(product)/double(NrGlobal)));
+				besselCache[product] = Float(radialGradient
+					? ::j1(M_PI*double(product)/double(NrGlobal))
+					: ::j0(M_PI*double(product)/double(NrGlobal)));
 		}
 	}
-	LogMsg(VERB_HIGH, "[2Dcyl spectrum] m2 J0 product cache ready: "
+	LogMsg(VERB_HIGH, "[2Dcyl spectrum] m2 J%d product cache ready: "
 	       "%zu/%zu values (%s %s), asymptotic for x>=%.8e",
-	       cacheSize, maxProduct + 1, cacheLoaded ? "loaded from" :
+	       radialGradient ? 1 : 0, cacheSize, maxProduct + 1,
+	       cacheLoaded ? "loaded from" :
 	       "generated for", cacheName, asymptoticFrom);
 #endif
 
@@ -352,15 +486,20 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 				} else {
 					const size_t largestCoordinate =
 						size_t(std::floor(std::sqrt(remaining)/dkz));
-					activeForKrho = largestCoordinate == 0 ? 0 : size_t(
-						std::upper_bound(localKzModes.begin(), localKzModes.end(),
-							largestCoordinate - 1) - localKzModes.begin());
+					if (largestCoordinate < axialModeOffset) {
+						activeForKrho = 0;
+					} else {
+						activeForKrho = size_t(std::upper_bound(
+							localKzModes.begin(), localKzModes.end(),
+							largestCoordinate - axialModeOffset) -
+							localKzModes.begin());
+					}
 				}
 			}
 			if (activeForKrho == 0)
 				continue;
 #ifdef USE_CYL_J0_VECTOR_CACHE
-			const Float *coefficients = j0Table.data() + ikrho*NrGlobal;
+			const Float *coefficients = besselTable.data() + ikrho*NrGlobal;
 #endif
 
 			for (size_t irho = 0; irho < NrGlobal; ++irho) {
@@ -370,12 +509,13 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 				const size_t product = ikrho*irho;
 				double bessel;
 				if (product < cacheSize) {
-					bessel = double(j0Cache[product]);
+					bessel = double(besselCache[product]);
 				} else {
 					const double x = M_PI*double(product)/double(NrGlobal);
-					const double phase = x - 0.25*M_PI;
+					const double phase = x - (radialGradient ? 0.75 : 0.25)*M_PI;
 					bessel = std::sqrt(2.0/(M_PI*x)) *
-						(std::cos(phase) + std::sin(phase)/(8.0*x));
+						(std::cos(phase) + (radialGradient ? -3.0 : 1.0)*
+						 std::sin(phase)/(8.0*x));
 				}
 				const double coefficient = double(irho)*delta*bessel;
 #endif
@@ -385,7 +525,8 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 
 			const double krho = dkrho*double(ikrho);
 			for (size_t ikzLocal = 0; ikzLocal < activeForKrho; ++ikzLocal) {
-				const double kz = dkz*double(localKzModes[ikzLocal] + 1);
+				const double kz = dkz*double(
+					localKzModes[ikzLocal] + axialModeOffset);
 				const double k = std::hypot(kz, krho);
 				const double value = transformed[ikzLocal]*2.0*M_PI*delta*delta;
 				const size_t bin = size_t(std::floor(
@@ -398,13 +539,13 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 	}
 	LogMsg(VERB_HIGH, "[2Dcyl spectrum] Fourier-Bessel binning completed");
 
-	spectrum.binK.assign(spectrum.nbins, 0.0);
+	std::vector<double> componentBins(spectrum.nbins, 0.0);
 	for (int thread = 0; thread < threadCount; ++thread)
 		for (size_t bin = 0; bin < spectrum.nbins; ++bin)
-			spectrum.binK[bin] += threadBins[size_t(thread)*spectrum.nbins + bin];
+			componentBins[bin] += threadBins[size_t(thread)*spectrum.nbins + bin];
 
-	std::vector<double> localBins = spectrum.binK;
-	MPI_Allreduce(localBins.data(), spectrum.binK.data(), int(spectrum.nbins),
+	std::vector<double> localBins = componentBins;
+	MPI_Allreduce(localBins.data(), componentBins.data(), int(spectrum.nbins),
 		MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	LogMsg(VERB_HIGH, "[2Dcyl spectrum] bin reduction completed");
 
@@ -424,12 +565,13 @@ void CylindricalSpectrum::runKinetic(SpecBin &spectrum)
 	 * half contributes another factor 2.  The remaining measure is therefore
 	 * krho*dkrho*dkz/(4*pi^2), with krho accumulated above. */
 	const double momentumMeasure = dkrho*dkz/(4.0*M_PI*M_PI);
-	for (double &bin : spectrum.binK)
+	for (double &bin : componentBins)
 		bin *= momentumMeasure;
 
 	field->setM2(M2_DIRTY);
 	LogMsg(VERB_NORMAL, "[2Dcyl spectrum] completed Nz=%zu Nr=%zu%s",
 		Nz, NrGlobal, useCutoff ? " with momentum cutoff" : "");
+	return componentBins;
 }
 
 void CylindricalSpectrum::modeData(SpecBin &spectrum)
@@ -443,7 +585,7 @@ void CylindricalSpectrum::modeData(SpecBin &spectrum)
 	const size_t Nz = field->NX();
 	const size_t Nr = field->TZ();
 	const double delta = field->Delta();
-	const double dkz = M_PI/(double(Nz)*delta);
+	const double dkz = M_PI/(double(Nz - 1)*delta);
 	const double dkrho = M_PI/(double(Nr)*delta);
 	const double k0 = spectrum.k0;
 	const int threads = commThreads();
@@ -465,7 +607,7 @@ void CylindricalSpectrum::modeData(SpecBin &spectrum)
 				? 1.0 : 2.0*M_PI*double(irho);
 			const double modeWeight = 2.0*transverseMultiplicity;
 			const double krho = dkrho*double(irho);
-			for (size_t iz = 1; iz < Nz; ++iz) {
+				for (size_t iz = 1; iz + 1 < Nz; ++iz) {
 				const double kz = dkz*double(iz);
 				const double q2 = (krho*krho + kz*kz)/(k0*k0);
 				const size_t bin = size_t(std::floor(
@@ -495,19 +637,37 @@ void CylindricalSpectrum::modeData(SpecBin &spectrum)
 
 void CylindricalSpectrum::nRun(SpecBin &spectrum, SpectrumMaskType mask, nRunType nrt)
 {
-	if (mask != SPMASK_FLAT) {
-		LogError("[2Dcyl spectrum] Only the unmasked spectrum is implemented.");
+	if (mask != SPMASK_FLAT && mask != SPMASK_VIL && mask != SPMASK_VIL2) {
+		LogError("[2Dcyl spectrum] Requested mask is not implemented.");
 		return;
 	}
-	if (!(nrt & NRUN_K))
+	if (!(nrt & (NRUN_K | NRUN_G)))
 		return;
-	if (nrt & (NRUN_G | NRUN_V | NRUN_S))
+	if (nrt & (NRUN_V | NRUN_S))
 		LogMsg(VERB_NORMAL,
-			"[2Dcyl spectrum] Only NRUN_K is implemented; other requested components are skipped.");
+			"[2Dcyl spectrum] NRUN_V/NRUN_S are not implemented and are skipped.");
 
 	switch (spectrum.fPrec) {
-		case FIELD_SINGLE: runKinetic<float>(spectrum); break;
-		case FIELD_DOUBLE: runKinetic<double>(spectrum); break;
+		case FIELD_SINGLE:
+			if (nrt & NRUN_K)
+				spectrum.binK = runComponent<float>(spectrum, CYL_KINETIC, mask);
+			if (nrt & NRUN_G) {
+				spectrum.binG = runComponent<float>(spectrum, CYL_GRADIENT_Z, mask);
+				const auto radial = runComponent<float>(spectrum, CYL_GRADIENT_RHO, mask);
+				for (size_t bin = 0; bin < spectrum.binG.size(); ++bin)
+					spectrum.binG[bin] += radial[bin];
+			}
+			break;
+		case FIELD_DOUBLE:
+			if (nrt & NRUN_K)
+				spectrum.binK = runComponent<double>(spectrum, CYL_KINETIC, mask);
+			if (nrt & NRUN_G) {
+				spectrum.binG = runComponent<double>(spectrum, CYL_GRADIENT_Z, mask);
+				const auto radial = runComponent<double>(spectrum, CYL_GRADIENT_RHO, mask);
+				for (size_t bin = 0; bin < spectrum.binG.size(); ++bin)
+					spectrum.binG[bin] += radial[bin];
+			}
+			break;
 		default:
 			LogError("[2Dcyl spectrum] Unsupported field precision.");
 	}

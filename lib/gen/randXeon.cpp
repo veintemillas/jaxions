@@ -131,7 +131,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					case CONF_RAND:
 					//RANDOM INITIAL CONDITIONS
 					{
-						m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+						const Float theta = static_cast<Float>(M_PI)*uni(mt64);
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
 						break;
 					}
 

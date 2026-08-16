@@ -74,6 +74,8 @@ extern bool uEvolAll;
 extern bool uZin;
 extern bool uZfn;
 extern bool aMod;
+extern bool doMend;
+extern bool modAtan;
 extern bool spectral;
 extern bool fpectral;
 extern bool mink;

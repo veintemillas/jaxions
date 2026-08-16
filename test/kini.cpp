@@ -891,6 +891,7 @@ void printIcData(const IcData &ic)
 	<< "part_disp   = " << ic.part_disp       << '\n'
 	<< "randommom   = " << ic.randommom       << '\n'
 	<< "uEvolAll    = " << ic.uEvolAll        << '\n'
+	<< "uDampNone   = " << ic.uDampNone       << '\n'
 	<< "linmodevol  = " << ic.linmodevol      << '\n'
 	<< "lme_no_rhs  = " << ic.lme_no_rhs      << '\n';
 }

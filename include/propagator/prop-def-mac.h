@@ -100,13 +100,13 @@
 	            (const complex<preci> *) m, (complex<preci> *) v,                   \
 	            (complex<preci> *) m2,                                              \
 	            zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd,                      \
-	            (const preci *) ood2, (preci) LL, Lx, Lz, Sf, Vo, Vf, NN);              \
+		            (const preci *) ood2, (preci) LL, Lx, Lz, Tz, Sf, Vo, Vf, NN);          \
 	    } else {                                                                    \
 	        propagateKernel<preci, V_##X, false><<<gridSize,blockSize,0,stream>>>( \
 	            (const complex<preci> *) m, (complex<preci> *) v,                   \
 	            (complex<preci> *) m2,                                              \
 	            zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd,                      \
-	            (const preci *) ood2, (preci) LL, Lx, Lz, Sf, Vo, Vf, NN);              \
+		            (const preci *) ood2, (preci) LL, Lx, Lz, Tz, Sf, Vo, Vf, NN);          \
 	    }                                                                           \
 break; \
 }

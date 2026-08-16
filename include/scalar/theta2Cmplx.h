@@ -5,4 +5,5 @@
 	#include "enum-field.h"
 
 	void	theta2Cmplx	(Scalar *field);
+	void	theta2CmplxM2	(Scalar *field);
 #endif

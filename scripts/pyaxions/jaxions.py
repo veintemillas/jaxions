@@ -347,6 +347,8 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'ct') or (something == 'z') or (something == 'time'):
         return f.attrs[u'z'] ;
+    if something == 'dt':
+        return f.attrs.get(u'dt', np.nan) ;
     if (something == 'Size') or (something == 'N') or (something == 'sizeN'):
         return int(f.attrs[u'Size']) ;
     if (something[0] == 'N') :
@@ -983,20 +985,20 @@ def gm(address,something='summary',printerror=False):
         ct = f.attrs[u'z']
         if (something == mapad+'mC') and (ftype == 'Saxion'):
             return f[mapad]['m'][()].reshape(Ny,N,2) ;
-        if (something == mapad+'mC') and (ftype == 'Axion'):
+        if (something == mapad+'mC') and (ftype in ('Axion', 'Axion Mod')):
             return ;
         if (something == mapad+'vC') and (ftype == 'Saxion'):
             return f[mapad]['v'][()].reshape(Ny,N,2) ;
-        if (something == mapad+'vC') and (ftype == 'Axion'):
+        if (something == mapad+'vC') and (ftype in ('Axion', 'Axion Mod')):
             return ;
         if (something == mapad+'theta') and (ftype == 'Saxion'):
             temp = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
             temp = np.arctan2(temp[:,:,1], temp[:,:,0])
             return temp ;
-        if (something == mapad+'theta') and (ftype == 'Axion'):
+        if (something == mapad+'theta') and (ftype in ('Axion', 'Axion Mod')):
             temp = np.array(f[mapad]['m'][()].reshape(Ny,N))
             return temp/scaleFactorR ;
-        if (something == mapad+'vheta') and (ftype == 'Axion'):
+        if (something == mapad+'vheta') and (ftype in ('Axion', 'Axion Mod')):
             temp = np.array(f[mapad]['v'][()].reshape(Ny,N))
             return temp ;
         if (something == mapad+'vheta') and (ftype == 'Saxion'):
@@ -1018,7 +1020,7 @@ def gm(address,something='summary',printerror=False):
                 return np.array(f[mapad]['E'][()].reshape(N,N)) ;
 
 
-        if (something == 'mapEdens') and (ftype == 'Axion'):
+        if (something == 'mapEdens') and (ftype in ('Axion', 'Axion Mod')):
             theta = np.array(f[mapad]['m'][()].reshape(N,N))/scaleFactorR
             massA2 = f.attrs[u'Axion mass']
             massA2 *= massA2
@@ -1320,7 +1322,7 @@ class mli:
         self.llcf = 1600;
         self.lz2e = 2.0; # lambda = lambda/R^lz2e in case we need it in the future
         self.L = L;
-        self.N = 1024;
+        self.N = N;
         self.ctend = 1000;
         self.outa = []
         self.outb = []

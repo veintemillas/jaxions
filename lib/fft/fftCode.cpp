@@ -325,12 +325,12 @@ namespace AxionFFT {
 						pfrom = m2f;
 						pto   = m2f;
 						if (dFft & FFT_FWD) {
-							int lengths[1] = { int(Nx - 1) };
-							int embedding[1] = { int(Nx) };
+								int lengths[1] = { int(Nx - 2) };
+								int embedding[1] = { int(Nx - 1) };
 							fftwf_r2r_kind kinds[1] = { FFTW_RODFT00 };
 							planForward = static_cast<void *>(fftwf_plan_many_r2r(
 								1, lengths, int(axion->NZ()), m2f, embedding, 1,
-								int(Nx), m2f, embedding, 1, int(Nx), kinds,
+									int(Nx - 1), m2f, embedding, 1, int(Nx - 1), kinds,
 								fftplanType));
 						}
 						break;
@@ -339,8 +339,31 @@ namespace AxionFFT {
 
 						pfrom = m2f;
 						pto   = m2f;
-						planForward = static_cast<void *>(fftwf_mpi_plan_many_transpose(Nz,Nx,1,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,
-																m2f,m2f,MPI_COMM_WORLD,fftplanType));
+							planForward = static_cast<void *>(fftwf_mpi_plan_many_transpose(Nz,Nx - 1,1,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,
+														m2f,m2f,MPI_COMM_WORLD,fftplanType));
+						break;
+
+					case	FFT1D_DCT_M2toM2:
+						pfrom = m2f;
+						pto   = m2f;
+						if (dFft & FFT_FWD) {
+								int lengths[1] = { int(Nx) };
+								int embedding[1] = { int(Nx) };
+							fftwf_r2r_kind kinds[1] = { FFTW_REDFT00 };
+							planForward = static_cast<void *>(fftwf_plan_many_r2r(
+								1, lengths, int(axion->NZ()), m2f, embedding, 1,
+									int(Nx), m2f, embedding, 1, int(Nx), kinds,
+								fftplanType));
+						}
+						break;
+
+					case	FFT_TRANSPOSE_DCT_M2toM2:
+						pfrom = m2f;
+						pto   = m2f;
+						planForward = static_cast<void *>(fftwf_mpi_plan_many_transpose(
+								Nz, Nx, 1, FFTW_MPI_DEFAULT_BLOCK,
+							FFTW_MPI_DEFAULT_BLOCK, m2f, m2f, MPI_COMM_WORLD,
+							fftplanType));
 						break;
 
 
@@ -548,12 +571,12 @@ namespace AxionFFT {
 						pfrom = m2d;
 						pto   = m2d;
 						if (dFft & FFT_FWD) {
-							int lengths[1] = { int(Nx - 1) };
-							int embedding[1] = { int(Nx) };
+								int lengths[1] = { int(Nx - 2) };
+								int embedding[1] = { int(Nx - 1) };
 							fftw_r2r_kind kinds[1] = { FFTW_RODFT00 };
 							planForward = static_cast<void *>(fftw_plan_many_r2r(
 								1, lengths, int(axion->NZ()), m2d, embedding, 1,
-								int(Nx), m2d, embedding, 1, int(Nx), kinds,
+									int(Nx - 1), m2d, embedding, 1, int(Nx - 1), kinds,
 								fftplanType));
 						}
 						break;
@@ -561,8 +584,31 @@ namespace AxionFFT {
 					case	FFT_TRANSPOSE_R2R_M2toM2:
 						pfrom = m2d;
 						pto   = m2d;
-						planForward = static_cast<void *>(fftw_mpi_plan_many_transpose(Nz,Nx,1,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,
-														m2d,m2d,MPI_COMM_WORLD,fftplanType));
+							planForward = static_cast<void *>(fftw_mpi_plan_many_transpose(Nz,Nx - 1,1,FFTW_MPI_DEFAULT_BLOCK,FFTW_MPI_DEFAULT_BLOCK,
+												m2d,m2d,MPI_COMM_WORLD,fftplanType));
+						break;
+
+					case	FFT1D_DCT_M2toM2:
+						pfrom = m2d;
+						pto   = m2d;
+						if (dFft & FFT_FWD) {
+								int lengths[1] = { int(Nx) };
+								int embedding[1] = { int(Nx) };
+							fftw_r2r_kind kinds[1] = { FFTW_REDFT00 };
+							planForward = static_cast<void *>(fftw_plan_many_r2r(
+								1, lengths, int(axion->NZ()), m2d, embedding, 1,
+									int(Nx), m2d, embedding, 1, int(Nx), kinds,
+								fftplanType));
+						}
+						break;
+
+					case	FFT_TRANSPOSE_DCT_M2toM2:
+						pfrom = m2d;
+						pto   = m2d;
+						planForward = static_cast<void *>(fftw_mpi_plan_many_transpose(
+								Nz, Nx, 1, FFTW_MPI_DEFAULT_BLOCK,
+							FFTW_MPI_DEFAULT_BLOCK, m2d, m2d, MPI_COMM_WORLD,
+							fftplanType));
 						break;
 
 					default:
@@ -861,6 +907,12 @@ namespace AxionFFT {
 		}
 
 		LogMsg (VERB_PARANOID, "Plans in list:");
+
+		if (fftPlans.empty()) {
+			LogMsg (VERB_HIGH, "No FFT plans to close");
+			init = false;
+			return;
+		}
 
 		for (auto fft = fftPlans.cbegin(); fft != fftPlans.cend(); fft++) {
 			auto name = (*fft).first;

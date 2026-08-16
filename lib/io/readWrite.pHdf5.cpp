@@ -438,8 +438,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		caspr(V_NONE,dStr,"None")
 	}
 
-	switch (vqcdType & V_EVOL_RHO)	{
+	switch (vqcdType & V_EVOL)	{
 		caspr(V_EVOL_RHO,rStr,"Only Rho")
+		caspr(V_EVOL_THETA,rStr,"Only Theta")
 		default:
 		caspr(V_NONE,rStr,"Full")
 	}
@@ -1152,7 +1153,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				}
 
 
-				if ( (myCosmos->QcdPot() & V_DAMP) == V_NONE) {
+				if ( (myCosmos->QcdPot() & V_DAMP) == V_NONE && !myCosmos->ICData().uDampNone) {
 
 					readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
 
@@ -1167,8 +1168,12 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					}
 				}
 				else {
+					if (myCosmos->ICData().uDampNone)
+						LogMsg (VERB_NORMAL, "Using no damping forced from command-line uDampNone");
+					else {
 					LogMsg (VERB_NORMAL, "V_DAMP (commandline) = %d", myCosmos->QcdPot() & V_DAMP);
 					vqcdType |= (myCosmos->QcdPot() & V_DAMP);
+					}
 				}
 
 				// FIXME
@@ -1182,6 +1187,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 					if (!strcmp(vStr, "Only Rho"))
 						vqcdType |= V_EVOL_RHO;
+					else if (!strcmp(vStr, "Only Theta"))
+						vqcdType |= V_EVOL_THETA;
 					else if (!strcmp(vStr, "Full"))
 						vqcdType |= V_NONE;
 					else {
@@ -1472,6 +1479,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		}
 		size_t Nxdummy=0,Nzdummy=0;
 		(*axion) = new Scalar(myCosmos, Nxdummy, Nzdummy, precision, wasGPU? DEV_GPU : cDev, zTmp, lowmem, zGrid, fTypeCreate,    lType, myCosmos->ICData().Nghost);
+		if (wasGPU)
+			(*axion)->setDev(DEV_CPU);
 
 		myCosmos->ICData().cType = cType_aux;
 
@@ -1566,13 +1575,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				prof.add(std::string("Unmoor configuration"), 0, 10*(totlZ*slab*(*axion)->Precision())*1.e-9);
 
 				/* mendTheta! */
-				mendTheta (*axion);
+				if (doMend)
+					mendTheta (*axion);
 			}
 
 		commSync();
 
 		/* Transform Field saxion->axion, axion->saxion */
-		//TODO make it consistent for axion mod
 
 		LogMsg(VERB_NORMAL,"[rc] fTypeParsed %d fTypeRead %d fTypeCreate %d",fTypeP, fTypeRead, fTypeCreate);
 
@@ -1584,14 +1593,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			LogMsg(VERB_NORMAL,"[rc] Axion requested, saxion read. Transforming... ");
 			aMod = false;
 			double shiftz = (*axion)->Saskia()*(*(*axion)->RV());
-			cmplxToTheta (*axion, shiftz, aMod);
+			cmplxToTheta (*axion, shiftz, aMod, doMend);
 		}
 		if (fTypeP == FIELD_AXION_MOD && fTypeRead == FIELD_SAXION){
 			LogMsg(VERB_NORMAL,"[rc] Axion% requested, saxion read. Transforming... ");
 			LogMsg(VERB_NORMAL,"[rc] WARINING: axion mod not tested");
 			aMod = true;
 			double shiftz = (*axion)->Saskia()*(*(*axion)->RV());
-			cmplxToTheta (*axion, shiftz, aMod);
+			cmplxToTheta (*axion, shiftz, aMod, doMend);
 		}
 			// mend?
 
@@ -1646,9 +1655,15 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// LogMsg(VERB_NORMAL, "AUXION deleted");
 
 		if (wasGPU) {
-    LogMsg(VERB_NORMAL,"[rc] Set DEVICE to GPU at the end of readConf.");
-    cDev = DEV_GPU;
- }
+			if ((*axion)->Folded()) {
+				LogMsg(VERB_NORMAL,"[rc] Unfolding field before transfer to GPU.");
+				Folder munge(*axion);
+				munge(UNFOLD_ALL);
+			}
+			LogMsg(VERB_NORMAL,"[rc] Set DEVICE to GPU at the end of readConf.");
+			cDev = DEV_GPU;
+			(*axion)->setDev(DEV_GPU);
+		}
 
 		if (cDev == DEV_GPU)
 			(*axion)->transferDev(FIELD_MV);
@@ -1825,8 +1840,9 @@ void	createMeas (Scalar *axion, int index)
 		caspr(V_NONE,dStr,"None")
 	}
 
-	switch (vqcdType & V_EVOL_RHO)	{
+	switch (vqcdType & V_EVOL)	{
 		caspr(V_EVOL_RHO,rStr,"Only Rho")
+		caspr(V_EVOL_THETA,rStr,"Only Theta")
 		default:
 		caspr(V_NONE,rStr,"Full")
 	}

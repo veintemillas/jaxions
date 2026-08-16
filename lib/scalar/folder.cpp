@@ -452,6 +452,88 @@ void Folder::unfoldField2DXZ(const size_t sY)
 		return;
 	}
 
+	template<typename Float>
+	void Folder::foldM2AsComplex()
+	{
+		if (field->M2Folded() || field->Device() == DEV_GPU)
+			return;
+
+		using cFloat = complex<Float>;
+		cFloat *mg = static_cast<cFloat *>(field->m2Cpu());
+		cFloat *m  = mg + Nxy*field->getNg();
+
+		fSize = 2*field->DataSize();
+		shift = field->DataAlign()/fSize;
+
+		const bool foldX = (Ny == 1);
+		const size_t N1 = foldX ? 1 : Nx;
+		const size_t N2 = foldX ? Nx : Ny;
+		if (N2 % shift != 0) {
+			LogError("[foldM2AsComplex] ERROR: fold dimension %zu not divisible by shift=%zu", N2, shift);
+			return;
+		}
+		const size_t Nv = N2/shift;
+
+		LogMsg(VERB_NORMAL, "[foldM2AsComplex] Folding M2 (%c) mAlign=%d, fSize=%d, shift=%d",
+		       foldX ? 'X' : 'Y', field->DataAlign(), fSize, shift);
+
+		for (size_t iz = 0; iz < Nz; ++iz) {
+			memcpy(mg, m + Nxy*iz, sizeof(cFloat)*Nxy);
+			#pragma omp parallel for schedule(static)
+			for (size_t i_v = 0; i_v < Nv; ++i_v)
+				for (size_t ix = 0; ix < N1; ++ix)
+					for (size_t s = 0; s < shift; ++s) {
+						const size_t oIdx = (i_v + s*Nv)*N1 + ix;
+						const size_t dIdx = iz*Nxy + i_v*N1*shift + ix*shift + s;
+						m[dIdx] = mg[oIdx];
+					}
+		}
+
+		field->setM2Folded(true);
+		somethingdone = true;
+	}
+
+	template<typename Float>
+	void Folder::unfoldM2AsComplex()
+	{
+		if (!field->M2Folded() || field->Device() == DEV_GPU)
+			return;
+
+		using cFloat = complex<Float>;
+		cFloat *mg = static_cast<cFloat *>(field->m2Cpu());
+		cFloat *m  = mg + Nxy*field->getNg();
+
+		fSize = 2*field->DataSize();
+		shift = field->DataAlign()/fSize;
+
+		const bool foldX = (Ny == 1);
+		const size_t N1 = foldX ? 1 : Nx;
+		const size_t N2 = foldX ? Nx : Ny;
+		if (N2 % shift != 0) {
+			LogError("[unfoldM2AsComplex] ERROR: fold dimension %zu not divisible by shift=%zu", N2, shift);
+			return;
+		}
+		const size_t Nv = N2/shift;
+
+		LogMsg(VERB_NORMAL, "[unfoldM2AsComplex] Unfolding M2 (%c) mAlign=%d, fSize=%d, shift=%d",
+		       foldX ? 'X' : 'Y', field->DataAlign(), fSize, shift);
+
+		for (size_t iz = 0; iz < Nz; ++iz) {
+			memcpy(mg, m + Nxy*iz, sizeof(cFloat)*Nxy);
+			#pragma omp parallel for schedule(static)
+			for (size_t i_v = 0; i_v < Nv; ++i_v)
+				for (size_t ix = 0; ix < N1; ++ix)
+					for (size_t s = 0; s < shift; ++s) {
+						const size_t oIdx = i_v*N1*shift + ix*shift + s;
+						const size_t dIdx = (i_v + s*Nv)*N1 + ix;
+						m[iz*Nxy + dIdx] = mg[oIdx];
+					}
+		}
+
+		field->setM2Folded(false);
+		somethingdone = true;
+	}
+
 
 
 
@@ -970,6 +1052,24 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 				}
 
 				break;
+
+		case FOLD_M2_AS_CMPLX:
+			setName("Fold M2 as complex");
+			add(0., field->Size()*field->DataSize()*4.e-9);
+			if (field->Precision() == FIELD_DOUBLE)
+				foldM2AsComplex<double>();
+			else if (field->Precision() == FIELD_SINGLE)
+				foldM2AsComplex<float>();
+			break;
+
+		case UNFOLD_M2_AS_CMPLX:
+			setName("Unfold M2 as complex");
+			add(0., field->Size()*field->DataSize()*4.e-9);
+			if (field->Precision() == FIELD_DOUBLE)
+				unfoldM2AsComplex<double>();
+			else if (field->Precision() == FIELD_SINGLE)
+				unfoldM2AsComplex<float>();
+			break;
 
 		default:
 			LogError ("Unrecognized folding option");

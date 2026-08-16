@@ -75,3 +75,33 @@ void	th2cxGpu (Scalar *sField)
 		break;
 	}
 }
+
+template<typename Float>
+__global__ void th2cxM2KernelGpu (const Float * __restrict__ in,
+	complex<Float> * __restrict__ out, const Float ir, const uint V)
+{
+	const uint idx = threadIdx.x + blockDim.x*blockIdx.x;
+	if (idx < V) {
+		const Float theta = in[idx]*ir;
+		out[idx] = complex<Float>(::cos(theta), ::sin(theta));
+	}
+}
+
+void th2cxM2Gpu (Scalar *sField)
+{
+	const uint V = sField->eSize();
+	const uint blocks = (V + BLSIZE - 1)/BLSIZE;
+	auto stream = ((cudaStream_t *)sField->Streams())[0];
+
+	if (sField->Precision() == FIELD_DOUBLE) {
+		th2cxM2KernelGpu<double><<<blocks, BLSIZE, 0, stream>>>(
+			static_cast<const double *>(sField->mGpu()),
+			static_cast<complex<double> *>(sField->m2Gpu()),
+			1.0/(*sField->RV()), V);
+	} else if (sField->Precision() == FIELD_SINGLE) {
+		th2cxM2KernelGpu<float><<<blocks, BLSIZE, 0, stream>>>(
+			static_cast<const float *>(sField->mGpu()),
+			static_cast<complex<float> *>(sField->m2Gpu()),
+			1.0f/float(*sField->RV()), V);
+	}
+}
