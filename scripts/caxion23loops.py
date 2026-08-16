@@ -4,7 +4,7 @@ from pyaxions import jaxions as pa
 
 from scipy.integrate import quad
 from scipy.interpolate import CubicSpline
-from scipy.special import j0, jn_zeros
+from scipy.special import ellipk, elliprf, elliprj, j0, jn_zeros
 
 import importlib, os, pickle, h5py, subprocess, timeit
 
@@ -129,7 +129,10 @@ def pq_potential_diagnostic(filename, modulus_cut=0.5, return_maps=False):
 def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
          gpu=False, verb=0, options='', outdir=None, Nz=-1, amr=1.0,
          ic='loop', kz_mode=1, krho_mode=0, wave_amplitude=0.1,
-         rho_cutoff=None, z_cutoff=None, rho_center=0.0, z_center=None):
+         rho_cutoff=None, z_cutoff=None, rho_center=0.0, z_center=None,
+         theta_taper_margin=None, theta_taper_width=2.0,
+         theta_taper_rho_margin=None, theta_taper_rho_width=None,
+         theta_method='solid_angle'):
     '''simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
             gpu=False, verb=0, options='', outdir=None)
 
@@ -164,6 +167,12 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     z_cutoff : optional Gaussian e-folding distance from the z midpoint
     rho_center : centre of the radial Gaussian; defaults to the axis
     z_center : centre of the axial Gaussian; defaults to (Nz-1)/2
+    theta_taper_margin : optional tanh midpoint distance from the upper z
+                         boundary for loop ICs; None leaves the IC unchanged
+    theta_taper_width : tanh taper width in lattice sites
+    theta_taper_rho_margin : optional tanh midpoint distance from outer rho
+    theta_taper_rho_width : outer-rho tanh width; defaults to z taper width
+    theta_method : 'solid_angle' (default) or legacy 'bfield'
     '''
     if plota:
         print('Simulation')
@@ -182,8 +191,14 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
 
     if ic == 'loop':
         theta = thetaics(N_create, Nz_create, R_create,
-                         plota=plota, readIC=True)
-        phi = phiics(theta, msa_create)
+                         plota=plota, readIC=True, method=theta_method)
+        if theta_taper_margin is not None or theta_taper_rho_margin is not None:
+            theta = taper_theta_boundaries(
+                theta, z_margin=theta_taper_margin,
+                rho_margin=theta_taper_rho_margin,
+                z_width=theta_taper_width,
+                rho_width=theta_taper_rho_width)
+        phi = phiics(theta, msa_create, R=R_create)
     elif ic == 'kz':
         phi = kz_wave_ics(N_create, Nz_create, mode=kz_mode,
                           amplitude=wave_amplitude, rho_cutoff=rho_cutoff,
@@ -381,7 +396,9 @@ def create_jax_direct(JAXI, Np=None, omp=None, launcher='srun', executable='caxi
 def simu_slurm(R, msa, N, Ng=2, Np=None, omp=None, plota=False, rescale=1,
                n_save=200, gpu=True, verb=0, options='', outdir=None, Nz=-1,
                amr=1.0, launcher='srun', executable='caxion3d',
-               launcher_options=None):
+               launcher_options=None, theta_taper_margin=None,
+               theta_taper_width=2.0, theta_taper_rho_margin=None,
+               theta_taper_rho_width=None, theta_method='solid_angle'):
     '''Run the full caxion3d workflow inside a Slurm job allocation.
 
     Unlike simu(), this function does not create create.sh or run.sh.
@@ -409,8 +426,15 @@ def simu_slurm(R, msa, N, Ng=2, Np=None, omp=None, plota=False, rescale=1,
         print('Creation with Nrho, Nz, R, msa =',
               N_create, Nz_create, R_create, msa_create)
 
-    theta = thetaics(N_create, Nz_create, R_create, plota=plota, readIC=True)
-    phi   = phiics(theta, msa_create)
+    theta = thetaics(N_create, Nz_create, R_create, plota=plota,
+                     readIC=True, method=theta_method)
+    if theta_taper_margin is not None or theta_taper_rho_margin is not None:
+        theta = taper_theta_boundaries(
+            theta, z_margin=theta_taper_margin,
+            rho_margin=theta_taper_rho_margin,
+            z_width=theta_taper_width,
+            rho_width=theta_taper_rho_width)
+    phi   = phiics(theta, msa_create, R=R_create)
 
     # Build and run ICs-only step (creates the HDF5 skeleton)
     # in jaxions, we permute, fast axis is z, slow is rho
@@ -481,7 +505,8 @@ def simu_slurm_streaming(R, msa, N, Ng=2, Np=None, omp=None, plota=False,
                          rescale=1, n_save=200, gpu=True, verb=0, options='',
                          outdir=None, Nz=-1, amr=1.0, launcher='srun',
                          executable='caxion3d', launcher_options=None,
-                         ic_block_rho=128, calculate=True, n=0):
+                         ic_block_rho=128, calculate=True, n=0,
+                         theta_method='solid_angle'):
     '''Run the Slurm workflow with streaming IC generation.'''
     if plota:
         print('Simulation',flush=True)
@@ -516,7 +541,8 @@ def simu_slurm_streaming(R, msa, N, Ng=2, Np=None, omp=None, plota=False,
                         nrh=N_create, nz=Nz_create,
                         R=R_create, msa=msa_create,
                         block_rho=ic_block_rho,
-                        plota=plota, calculate=calculate, n=n)
+                        plota=plota, calculate=calculate, n=n,
+                        theta_method=theta_method)
 
     if plota:
         print('Run jaxions', N, R, msa, flush=True)
@@ -582,7 +608,8 @@ def copyics(phi, filename='out/m/axion.00000', n=0):
 
 def write_ics_streaming(filename, nrh, nz, R, msa, block_rho=128,
                         threshold=10, table_file='aux/tableszetat1t2_4.pkl',
-                        plota=False, calculate=True, n=0):
+                        plota=False, calculate=True, n=0,
+                        theta_method='solid_angle'):
     '''Write loop ICs to a jaxions HDF5 file in rho blocks.
 
     This avoids keeping full theta and phi arrays in memory at the same time.
@@ -590,18 +617,17 @@ def write_ics_streaming(filename, nrh, nz, R, msa, block_rho=128,
     z = np.arange(nz, dtype=np.float64)
     rh_all = np.arange(nrh, dtype=np.float64)
 
-    theta0 = np.zeros(nrh)
-    theta0[rh_all <= R] = np.pi
-    R_phi, _ = findmer(theta0, ftype='theta')
-    if R_phi == 0:
-        R_phi = R
+    if theta_method not in ('solid_angle', 'bfield'):
+        raise ValueError("theta_method must be 'solid_angle' or 'bfield'")
+    R_phi = R
 
-    with open(table_file, 'rb') as f:
-        dica = pickle.load(f)
+    if theta_method == 'bfield':
+        with open(table_file, 'rb') as f:
+            dica = pickle.load(f)
 
-    zeta, t1, t2 = dica['zeta'], dica['t1'], dica['t2']
-    f1 = CubicSpline(zeta, t1)
-    f2 = CubicSpline(zeta, t2)
+        zeta, t1, t2 = dica['zeta'], dica['t1'], dica['t2']
+        f1 = CubicSpline(zeta, t1)
+        f2 = CubicSpline(zeta, t2)
 
     def I1f(zzeta):
         return (3 * np.pi / 4 * zzeta + 2 ** 1.5 * zzeta ** 3 / (1 - zzeta ** 2)) * f1(zzeta)
@@ -645,31 +671,34 @@ def write_ics_streaming(filename, nrh, nz, R, msa, block_rho=128,
             r1 = min(r0 + block_rho, nrh)
             rh = np.arange(r0, r1, dtype=np.float64)
 
-            B = Bz_values(rh, z)
-            increments = 0.5 * (B[:-1, :] + B[1:, :])
-            near = ((rh[None, :] - R) ** 2 + z[1:, None] ** 2) <= threshold ** 2
+            if theta_method == 'solid_angle':
+                theta = 0.5 * solid_angle_disk(rh[None, :], z[:, None], R)
+            else:
+                B = Bz_values(rh, z)
+                increments = 0.5 * (B[:-1, :] + B[1:, :])
+                near = ((rh[None, :] - R) ** 2 + z[1:, None] ** 2) <= threshold ** 2
 
-            if calculate:
-                jj, ii = np.nonzero(near)
-                for a, b in zip(jj, ii):
-                    j = a + 1
-                    rho = rh[b]
-                    res, err = quad(lambda zz: Bz_scalar(rho, zz),
-                                    z[j - 1], z[j])
-                    increments[a, b] = res
+                if calculate:
+                    jj, ii = np.nonzero(near)
+                    for a, b in zip(jj, ii):
+                        j = a + 1
+                        rho = rh[b]
+                        res, err = quad(lambda zz: Bz_scalar(rho, zz),
+                                        z[j - 1], z[j])
+                        increments[a, b] = res
 
-            theta = np.empty((nz, r1 - r0), dtype=np.float64)
-            theta[0, :] = np.where(rh <= R, np.pi, 0.0)
-            theta[1:, :] = theta[0, :][None, :] + np.cumsum(increments, axis=0)
+                theta = np.empty((nz, r1 - r0), dtype=np.float64)
+                theta[0, :] = np.where(rh <= R, np.pi, 0.0)
+                theta[1:, :] = theta[0, :][None, :] + np.cumsum(increments, axis=0)
 
-            if not calculate:
-                near_cols = np.nonzero(np.any(near, axis=0))[0]
-                for b in near_cols:
-                    for j in range(1, nz):
-                        if near[j - 1, b]:
-                            theta[j, b] = np.arctan2(z[j], rh[b] - R)
-                        else:
-                            theta[j, b] = theta[j - 1, b] + increments[j - 1, b]
+                if not calculate:
+                    near_cols = np.nonzero(np.any(near, axis=0))[0]
+                    for b in near_cols:
+                        for j in range(1, nz):
+                            if near[j - 1, b]:
+                                theta[j, b] = np.arctan2(z[j], rh[b] - R)
+                            else:
+                                theta[j, b] = theta[j - 1, b] + increments[j - 1, b]
 
             Z = z[:, None]
             RH = rh[None, :]
@@ -971,9 +1000,72 @@ def krho_wave_ics(nrh, nz, mode=0, kz_mode=1, amplitude=0.1,
     return phi
 
 
-def phiics(theta, msa):
+def taper_theta_boundaries(theta, z_margin=10.0, rho_margin=None,
+                           z_width=2.0, rho_width=None, copy=True):
+    '''Taper a cylindrical theta IC at the outer z and rho boundaries.
+
+    Parameters
+    ----------
+    theta : ndarray, shape (nz, nrho)
+        Cylindrical phase field returned by :func:`thetaics`.
+    z_margin, rho_margin : float or None
+        Distances in lattice sites between each tanh midpoint and its outer
+        boundary.  ``rho_margin=None`` leaves the outer rho boundary alone.
+    z_width, rho_width : float or None
+        Tanh widths in lattice sites.  ``rho_width=None`` uses ``z_width``.
+    copy : bool
+        Return a copy by default; set false to modify the input in place.
+
+    Notes
+    -----
+    The window is
+
+        w(z,rho) = wz(z) wr(rho).
+
+    Values indistinguishable from one are restored exactly, so the bulk IC
+    is untouched.  The final plane is set exactly to theta=0 to satisfy a
+    real upper-boundary field.  This is an optional finite-volume treatment,
+    not part of the default isolated-loop IC.
+    '''
+    if np.ndim(theta) != 2:
+        raise ValueError('theta must have shape (nz, nrho)')
+    if z_margin is not None and (z_margin <= 0 or z_width <= 0):
+        raise ValueError('z_margin and z_width must be positive')
+    if rho_margin is not None:
+        if rho_width is None:
+            rho_width = z_width
+        if rho_margin <= 0 or rho_width <= 0:
+            raise ValueError('rho_margin and rho_width must be positive')
+
+    tapered = np.array(theta, copy=copy)
+    nz, nrho = tapered.shape
+    if z_margin is not None:
+        distance = (nz - 1) - np.arange(nz, dtype=float)
+        window = 0.5*(1.0 + np.tanh((distance - z_margin)/z_width))
+        window[window > 1.0 - 1.e-12] = 1.0
+        tapered *= window[:, None]
+        tapered[-1, :] = 0.0
+    if rho_margin is not None:
+        distance = (nrho - 1) - np.arange(nrho, dtype=float)
+        window = 0.5*(1.0 + np.tanh((distance - rho_margin)/rho_width))
+        window[window > 1.0 - 1.e-12] = 1.0
+        tapered *= window[None, :]
+        tapered[:, -1] = 0.0
+    return tapered
+
+
+def taper_theta_upper(theta, margin=10.0, width=2.0, copy=True):
+    '''Backward-compatible upper-z-only theta taper.'''
+    return taper_theta_boundaries(theta, z_margin=margin, z_width=width,
+                                  rho_margin=None, copy=copy)
+
+
+def phiics(theta, msa, R=None):
     '''Build phi = rho * exp(i*theta) with rho minimising the EOM.'''
-    R, s    = findmer(theta[0, :], ftype='theta')
+    if R is None:
+        R, _ = findmer(theta[0, :], ftype='theta')
+        if R < 0:
+            raise ValueError('Could not infer the loop radius; pass R explicitly')
     nz, nrh = theta.shape
     rh      = np.arange(nrh)
     z       = np.arange(nz)
@@ -985,14 +1077,103 @@ def phiics(theta, msa):
     return phi
 
 
-def thetaics(nrh, nz, R, plota=False, readIC=True):
+def complete_elliptic_pi(n, m):
+    '''Complete Legendre elliptic integral Pi(n|m), via Carlson forms.'''
+    n, m = np.broadcast_arrays(np.asarray(n, dtype=float),
+                               np.asarray(m, dtype=float))
+    return (elliprf(np.zeros_like(m), 1.0 - m, np.ones_like(m)) +
+            n * elliprj(np.zeros_like(m), 1.0 - m, np.ones_like(m),
+                        1.0 - n) / 3.0)
+
+
+def solid_angle_disk(rho, z, R):
+    '''Oriented solid angle of a radius-R disk seen from (rho, z).
+
+    The disk lies in z=0 and its orientation is chosen so that Omega tends
+    to +2*pi when z -> 0+ at rho < R.  The general Paxton expression uses
+    complete elliptic integrals K and Pi.  Inputs broadcast as NumPy arrays.
+    At the loop itself the solid angle is undefined; zero is returned, making
+    theta=0.  This convention is harmless because |phi|=0 there.
+    '''
+    if R <= 0:
+        raise ValueError('R must be positive')
+    rho, z = np.broadcast_arrays(np.asarray(rho, dtype=float),
+                                 np.asarray(z, dtype=float))
+    if np.any(rho < 0) or np.any(z < 0):
+        raise ValueError('solid_angle_disk expects cylindrical rho,z >= 0')
+
+    omega = np.empty(rho.shape, dtype=float)
+    on_plane = (z == 0.0)
+    omega[on_plane & (rho < R)] = 2.0 * np.pi
+    omega[on_plane & (rho > R)] = 0.0
+    omega[on_plane & (rho == R)] = 0.0
+
+    off_plane = ~on_plane
+    on_cylinder = off_plane & (rho == R)
+    if np.any(on_cylinder):
+        zz = z[on_cylinder]
+        m = 4.0 * R**2 / (zz**2 + 4.0 * R**2)
+        omega[on_cylinder] = (np.pi -
+            2.0 * zz / np.sqrt(zz**2 + 4.0 * R**2) * ellipk(m))
+
+    general = off_plane & ~on_cylinder
+    if np.any(general):
+        rr = rho[general]
+        zz = z[general]
+        rp = rr + R
+        scale = np.sqrt(zz**2 + rp**2)
+        m = np.clip(4.0 * R * rr / scale**2, 0.0,
+                    np.nextafter(1.0, 0.0))
+        n = np.clip(4.0 * R * rr / rp**2, 0.0,
+                    np.nextafter(1.0, 0.0))
+        bracket = ellipk(m) - (rr - R) / rp * complete_elliptic_pi(n, m)
+        base = np.where(rr < R, 2.0 * np.pi, 0.0)
+        omega[general] = base - 2.0 * zz / scale * bracket
+
+    # Suppress only roundoff excursions; the analytic range for z >= 0 is
+    # [0, 2*pi].
+    return np.clip(omega, 0.0, 2.0 * np.pi)
+
+
+def thetaics_solid_angle(nrh, nz, R, block_rho=256, plota=False):
+    '''Create theta=Omega/2 from the analytic circular-disk solid angle.'''
+    z = np.arange(nz, dtype=float)[:, None]
+    theta = np.empty((nz, nrh), dtype=float)
+    for r0 in range(0, nrh, block_rho):
+        r1 = min(r0 + block_rho, nrh)
+        rho = np.arange(r0, r1, dtype=float)[None, :]
+        theta[:, r0:r1] = 0.5 * solid_angle_disk(rho, z, R)
+    if plota:
+        fig, ax = plt.subplots(1, 2, figsize=(20, 20))
+        im = ax[0].imshow(theta, cmap=pa.thetacmap, origin='lower',
+                          vmax=np.pi, vmin=-np.pi)
+        pa.colorbar(im)
+        im = ax[1].imshow(theta, origin='lower')
+        pa.colorbar(im)
+        ax[1].set_xlim(R - 2 * R / 10, R + 2 * R / 10)
+        ax[1].set_ylim(0, 2 * R / 10)
+    return theta
+
+
+def thetaics(nrh, nz, R, plota=False, readIC=True, method='solid_angle'):
+    '''Create the loop phase using solid angle (default) or legacy B field.'''
+    if method == 'solid_angle':
+        return thetaics_solid_angle(nrh, nz, R, plota=plota)
+    if method == 'bfield':
+        return thetaics_bfield(nrh, nz, R, plota=plota, readIC=readIC)
+    raise ValueError("theta method must be 'solid_angle' or 'bfield'")
+
+
+def thetaics_bfield(nrh, nz, R, plota=False, readIC=True):
     '''Create a nrh x nz theta field for a loop of radius R.
 
     Integrates the static B-field along z.
     readIC=True  : load cached ICs from aux/ if available.
     readIC=False : always recompute.
     '''
-    name     = 'theta_%dx%dR%d.pkl' % (nrh, nz, R)
+    # Include the full radius in the legacy cache key: integer formatting used
+    # to alias, for example, R=64 and R=64.25 to the same cached field.
+    name     = 'theta_bfield_%dx%dR%.12g.pkl' % (nrh, nz, R)
     b_create = True
 
     if readIC:
