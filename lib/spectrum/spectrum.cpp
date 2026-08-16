@@ -849,15 +849,18 @@ void	SpecBin::maskPaxionEnergyAxitv	() {
 template<typename Float>
 void	SpecBin::maskPaxionEnergyAxitv	() {
 	Float *m2 = static_cast<Float*>(field->m2Cpu());
-	Float *m  = static_cast<Float*>(field->mStart());
-	Float *v  = static_cast<Float*>(field->vStart());
 	const size_t S = field->Size();
 
-	/* ethres = <|psi|^2> * edens_sigma_threshold  (same reference as the nRun AXITV) */
+	/* Criterion = the number density |psi|^2 itself, i.e. m2[0..S). energyPaxion
+	   stores m2[iNx] = m^2+v^2 = |psi|^2, and crucially writes it UNFOLDED, while
+	   energy() has just folded the field -> reading m/v here would sample the
+	   wrong (folded) points and leave the mask ineffective. m2 stays aligned
+	   with what pRun transforms, and equals the nRun AXITV criterion value.
+	   ethres = <|psi|^2> * edens_sigma_threshold. */
 	double localsum = 0.0;
 	#pragma omp parallel for schedule(static) reduction(+:localsum)
 	for (size_t idx=0; idx < S; idx++)
-		localsum += (double) m[idx]*(double) m[idx] + (double) v[idx]*(double) v[idx];
+		localsum += (double) m2[idx];
 	double globalsum = 0.0;
 	MPI_Allreduce(&localsum, &globalsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	double meanrho = globalsum / (double) field->TotalSize();
@@ -865,10 +868,10 @@ void	SpecBin::maskPaxionEnergyAxitv	() {
 	LogMsg(VERB_NORMAL,"[pRun paxion] AXITV psp threshold %.3e (mean %.3e, sigma %.2f)",
 		(double) ethres, meanrho, mInfo.edens_sigma_threshold);
 
-	/* mask the energy density in m2 by w(|psi|^2); m2[0..S) is exactly what pRun FFTs */
+	/* mask the density in m2 by w(|psi|^2); m2[0..S) is exactly what pRun FFTs */
 	#pragma omp parallel for schedule(static)
 	for (size_t idx=0; idx < S; idx++) {
-		Float rho = m[idx]*m[idx] + v[idx]*v[idx];
+		Float rho = m2[idx];
 		Float w   = (Float)0.5*((Float)1 - std::tanh((Float)5*(rho/ethres - (Float)1)));
 		m2[idx]  *= w;
 	}
