@@ -254,13 +254,11 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 										const uint xp = xq + nv;
 
 										if (xp >= Nx) {
-											const uint xRef = 2*(Nx - 1) - xp;
-											const uint jRef = xRef % Sfold;
-											const uint qRef = xRef / Sfold;
-											const size_t idxRef =
-												((zC*Nx + jRef*step + qRef) << 1);
-											bxOut[2*q + 0] =  m[idxRef + 0];
-											bxOut[2*q + 1] = -m[idxRef + 1];
+											/* Smooth constant extrapolation at z=L. */
+											alignas(Align) double bxMel[2*step];
+											opCode(store_pd, bxMel, mel);
+											bxOut[2*q + 0] = bxMel[2*q + 0];
+											bxOut[2*q + 1] = bxMel[2*q + 1];
 										} else {
 											bxOut[2*q + 0] = bxWrap[2*(q+1) + 0];
 											bxOut[2*q + 1] = bxWrap[2*(q+1) + 1];
@@ -801,13 +799,11 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 				        const uint xp = xq + nv;
 
 						if (xp >= Nx) {
-						    const uint xRef = 2*(Nx - 1) - xp;
-						    const uint jRef = xRef % Sfold;
-						    const uint qRef = xRef / Sfold;
-						    const size_t idxRef =
-						        ((zC*Nx + jRef*step + qRef) << 1);
-						    bxOut[2*q + 0] =  m[idxRef + 0];
-						    bxOut[2*q + 1] = -m[idxRef + 1];
+						    /* Smooth constant extrapolation at z=L. */
+						    alignas(Align) float bxMel[2*step];
+						    opCode(store_ps, bxMel, mel);
+						    bxOut[2*q + 0] = bxMel[2*q + 0];
+						    bxOut[2*q + 1] = bxMel[2*q + 1];
 				        } else {
 				            bxOut[2*q + 0] = bxWrap[2*(q+1) + 0];
 				            bxOut[2*q + 1] = bxWrap[2*(q+1) + 1];

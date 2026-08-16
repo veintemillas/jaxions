@@ -59,12 +59,11 @@ void propagateCoreGpu(
 
 	for (size_t nv=1; nv <= NN; nv++)
 	{
-			if (X0 + nv >= Lx) {
-				// Periodic continuation on the doubled axial domain:
-				// phi(L+s) = conj(phi(L-s)), L = Lx-1.
-				const uint xRef = 2*(Lx - 1) - (X0 + nv);
-				malPx = conj(m[idx - X0 + xRef]);
-			} else
+			if (X0 + nv >= Lx)
+				/* Smooth constant extrapolation at the open z boundary.  Do not
+				 * impose a second conjugation fixed point on an isolated-loop IC. */
+				malPx = tmp;
+			else
 				malPx = m[idx + nv];
 
 			if (X0 < nv)
@@ -180,7 +179,36 @@ void propagateCoreGpu(
 
 	switch (VQcd & V_DAMP) {
 		case	V_NONE:
+		#ifdef USE_2DCYL
+		{
+			/* Match the CPU cylindrical propagator's absorbing layer.  Without
+			 * this sponge, the conjugate/even outer reflections launch a
+			 * lattice-scale wave which subsequently propagates back into the
+			 * physical domain. */
+			constexpr uint nAbsZ = 16;
+			constexpr uint nAbsR = 16;
+			constexpr Float sigAbsZ = Float(0.5);
+			constexpr Float sigAbsR = Float(0.5);
+			Float sigma = Float(0);
+			if (Lx > nAbsZ && X0 >= Lx - nAbsZ) {
+				const Float u = Float(X0 - (Lx - nAbsZ))/Float(nAbsZ);
+				sigma += sigAbsZ*u*u;
+			}
+			if (Tz > nAbsR && Z0_global >= Tz - nAbsR) {
+				const Float u = Float(Z0_global - (Tz - nAbsR))/Float(nAbsR);
+				sigma += sigAbsR*u*u;
+			}
+			if (sigma > Float(0)) {
+				const Float sponge = sigma*dzc/Float(2);
+				const Float spongeDp1 = Float(1)/(Float(1) + sponge);
+				const Float spongeDp2 = (Float(1) - sponge)*spongeDp1;
+				mel = mel*spongeDp2 + a*(spongeDp1*dzc);
+			} else
+				mel += a*dzc;
+		}
+		#else
 		mel += a*dzc;
+		#endif
 		break;
 
 		case	V_DAMP_RHO:
