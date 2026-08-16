@@ -852,6 +852,7 @@
 			bool                measCPU;
 			double              cTimesec;
 			int                 propstep;
+			double              deltaCt;     // actual step immediately before this measurement
 			int                 cummask;
 			PrintConf           printconf;
 			bool                maskenergyonly;

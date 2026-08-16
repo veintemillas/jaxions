@@ -2992,6 +2992,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.measCPU  = measCPU;
 	deninfa.cTimesec = 0.0;
 	deninfa.propstep = 0;
+	deninfa.deltaCt = 0.0;
 	deninfa.cummask = cumumas;
 
 	// default measurement type is parsed

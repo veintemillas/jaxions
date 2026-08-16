@@ -186,6 +186,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	writeAttribute(&info.cTimesec, "Wall time [s]", H5T_NATIVE_DOUBLE);
 	writeAttribute(&info.propstep, "Prop step #", H5T_NATIVE_INT);
+	writeAttribute(&info.deltaCt, "dt", H5T_NATIVE_DOUBLE);
 
 	if	( axiona->MMomSpace() || axiona->VMomSpace() )
 	{

@@ -347,6 +347,8 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'ct') or (something == 'z') or (something == 'time'):
         return f.attrs[u'z'] ;
+    if something == 'dt':
+        return f.attrs.get(u'dt', np.nan) ;
     if (something == 'Size') or (something == 'N') or (something == 'sizeN'):
         return int(f.attrs[u'Size']) ;
     if (something[0] == 'N') :

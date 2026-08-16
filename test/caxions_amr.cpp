@@ -352,6 +352,9 @@ int	main (int argc, char *argv[])
 	LogOut ("Start redshift loop (steps %lu)\n\n", myCosmos.ICData().nSteps);
 	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
 	{
+		// AMR diagnostics also use measrightnow, but only a measurement loaded
+		// from measfile.dat is allowed to advance the schedule cursor.
+		bool consume_scheduled_measurement = false;
 
 		// time step
 		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
@@ -387,6 +390,7 @@ int	main (int argc, char *argv[])
 					LogMsg(VERB_NORMAL,"                   to   %e",dzaux);LogFlush();
 					measrightnow = true;
 					loadmeasfromlist(&measfilepar, &ninfa, i_meas);
+					consume_scheduled_measurement = true;
 					defaultmeasType = ninfa.measdata;
 					// actually, if this is the last measurement, do not measure!
 					if ( (i_meas == measfilepar.ct.size()-1) ){
@@ -437,9 +441,12 @@ int	main (int argc, char *argv[])
 							ninfa.measdata = defaultmeasType;
 							ninfa.cTimesec = (double) Timer()*1.0e-6;
 							ninfa.propstep = iz;
+							ninfa.deltaCt = dzaux;
 							lm = Measureme (axion, ninfa);
 							index++;
-							i_meas++ ;
+							// This is an AMR-transition diagnostic, not an entry from
+							// the measurement file.  Keep i_meas pointing at the next
+							// scheduled output; otherwise every refinement skips one.
 							//reset flag
 							measrightnow = false;
 						}
@@ -524,12 +531,14 @@ int	main (int argc, char *argv[])
 				ninfa.measdata = defaultmeasType;
 				ninfa.cTimesec = (double) Timer()*1.0e-6;
 				ninfa.propstep = iz;
+				ninfa.deltaCt = dzaux;
 				// if (axion->Field() == FIELD_PAXION )
 				// 		ninfa.measdata |= MEAS_3DMAP;
 
 				lm = Measureme (axion, ninfa);
 				index++;
-				i_meas++ ;
+				if (dumpmode != DUMP_FROMLIST || consume_scheduled_measurement)
+					i_meas++ ;
 				//reset flag
 				measrightnow = false;
 			}
