@@ -62,8 +62,8 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 		return ;
 
 //sponge
-	const uint  nAbsZ   = 16;     // sponge width fast axis
-	const uint  nAbsR   = 16;     // sponge width radial
+	const uint  nAbsZ   = ppar.cylSponge; // zero disables the outer sponge
+	const uint  nAbsR   = ppar.cylSponge;
 	const float sigAbsZ = 0.5f;  // strength
 	const float sigAbsR = 0.5f;
 
@@ -433,8 +433,8 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 							}
 
 							/* update velocities with/without damping */
-							const bool inRhoSponge = (zC_global >= Tz - nAbsR);
-							const bool inZSponge   = (zFastMax   >= Nx - nAbsZ);
+							const bool inRhoSponge = nAbsR > 0 && (zC_global >= Tz - nAbsR);
+							const bool inZSponge   = nAbsZ > 0 && (zFastMax   >= Nx - nAbsZ);
 
 							switch (VQcd & V_DAMP) {
 
@@ -984,8 +984,8 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 			}
 
 			/* update velocities with/without damping */
-const bool inRhoSponge = (zC_global >= Tz - nAbsR);
-const bool inZSponge   = (j + (Nc-1)*Sfold >= Nx - nAbsZ);
+const bool inRhoSponge = nAbsR > 0 && (zC_global >= Tz - nAbsR);
+const bool inZSponge   = nAbsZ > 0 && (j + (Nc-1)*Sfold >= Nx - nAbsZ);
 
 			switch (VQcd & V_DAMP) {
 

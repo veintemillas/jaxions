@@ -906,6 +906,7 @@
 			double        kcr;
 			int           Bext;	// external winding for anystring loop force (0 = off)
 			int           maxamr;	// caxion AMR: max refinement levels (-1 = unlimited)
+			int           cylSponge;	// 2DCYL outer sponge width (0 = disabled)
 			double        mode0;
 			double        beta;
 			double        zi;
@@ -1022,6 +1023,7 @@
 			bool     rhsoff;
 			bool     FAT;
 			double   msa;
+			uint     cylSponge;
 
 		}	PropParms;
 

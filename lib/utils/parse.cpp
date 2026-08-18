@@ -289,6 +289,7 @@ void	PrintUsage(char *name)
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
  	printf("  --lap   1/2/3/4             	Number of Neighbours of the laplacian [default --lap 1 flag]\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
+	printf("  --cylsponge [int]             2DCYL outer absorbing-layer width (default 16; 0 disables).\n");
 	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
 	printf("  --fftplan [64/0/32/8]         FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE (default MEASURE) \n\n");
 
@@ -706,6 +707,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.siter     = 40;
 	icdatst.kcr       = 1.0;
 	icdatst.maxamr    = -1;
+	icdatst.cylSponge = 16;
 	icdatst.Bext      = 0;
 	icdatst.kMax      = 2;
 	icdatst.mode0     = 0.0;
@@ -1193,6 +1195,24 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			icdatst.maxamr = atoi(argv[i+1]);	// caxion AMR: cap refinement levels (-1 = unlimited)
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--cylsponge"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a non-negative 2DCYL sponge width.\n");
+				exit(1);
+			}
+
+			icdatst.cylSponge = atoi(argv[i+1]);
+			if (icdatst.cylSponge < 0)
+			{
+				printf("Error: 2DCYL sponge width must be non-negative.\n");
+				exit(1);
+			}
 
 			PARSE2;
 		}

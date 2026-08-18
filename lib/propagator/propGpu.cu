@@ -28,7 +28,7 @@ void propagateCoreGpu(
 	const Float dzc, const Float dzd,
 	const Float* __restrict__ ood2,
 		const Float LL, const uint Lx, const uint Lz, const uint Tz,
-		const uint Sf, const uint NN)
+		const uint Sf, const uint NN, const uint cylSponge)
 	{
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
@@ -185,16 +185,16 @@ void propagateCoreGpu(
 			 * this sponge, the conjugate/even outer reflections launch a
 			 * lattice-scale wave which subsequently propagates back into the
 			 * physical domain. */
-			constexpr uint nAbsZ = 16;
-			constexpr uint nAbsR = 16;
+			const uint nAbsZ = cylSponge; // zero disables the outer sponge
+			const uint nAbsR = cylSponge;
 			constexpr Float sigAbsZ = Float(0.5);
 			constexpr Float sigAbsR = Float(0.5);
 			Float sigma = Float(0);
-			if (Lx > nAbsZ && X0 >= Lx - nAbsZ) {
+			if (nAbsZ > 0 && Lx > nAbsZ && X0 >= Lx - nAbsZ) {
 				const Float u = Float(X0 - (Lx - nAbsZ))/Float(nAbsZ);
 				sigma += sigAbsZ*u*u;
 			}
-			if (Tz > nAbsR && Z0_global >= Tz - nAbsR) {
+			if (nAbsR > 0 && Tz > nAbsR && Z0_global >= Tz - nAbsR) {
 				const Float u = Float(Z0_global - (Tz - nAbsR))/Float(nAbsR);
 				sigma += sigAbsR*u*u;
 			}
@@ -251,7 +251,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 			const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, 
 			const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float* __restrict__ ood2, const Float LL,
 			const uint Lx, const uint Lz, const uint Tz, const uint Sf,
-			const uint Vo, const uint Vf, const uint NN)
+			const uint Vo, const uint Vf, const uint NN, const uint cylSponge)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 //	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -271,7 +271,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
         	     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 #endif
 	if (idx >= Vf) return;
-	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Lz, Tz, Sf, NN);
+	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Lz, Tz, Sf, NN, cylSponge);
 }
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, 

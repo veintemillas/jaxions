@@ -2059,6 +2059,7 @@ void Scalar::loadParms(PropParms *pipar)
 
 		(*pipar).FAT = this->BckGnd()->FAT();
 		(*pipar).msa = this->BckGnd()->MAa(); // for paxion			
+		(*pipar).cylSponge = static_cast<uint>(this->BckGnd()->ICData().cylSponge);
 	}
 
 
