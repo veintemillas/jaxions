@@ -17,6 +17,7 @@
 #include "comms/comms.h"
 #include "fft/fftCode.h"
 #include "io/readWrite.h"
+#include "scalar/folder.h"
 #include "scalar/scalarField.h"
 #include "spectrum/J0tabler.h"
 #include "spectrum/spectrum.h"
@@ -162,8 +163,10 @@ std::vector<double> CylindricalSpectrum::runComponent(SpecBin &spectrum,
 					mWithGhosts[ghostRow*Nz + iz - 1];
 				row[iz] = maskWeight(center)*scaleFactor*quotient(center, difference)/Float(2*delta);
 			}
+				/* Match the propagator's open upper-z boundary: extend the
+				 * endpoint smoothly instead of imposing conjugate reflection. */
 				row[Nz - 1] = maskWeight(endpoint)*scaleFactor*quotient(endpoint,
-					std::conj(inside) - inside)/Float(2*delta);
+					endpoint - inside)/Float(2*delta);
 			continue;
 		}
 
@@ -637,6 +640,14 @@ void CylindricalSpectrum::modeData(SpecBin &spectrum)
 
 void CylindricalSpectrum::nRun(SpecBin &spectrum, SpectrumMaskType mask, nRunType nrt)
 {
+	/* Cylindrical derivatives and transforms require explicit contiguous
+	 * (rho,z) rows.  Enforce that layout at the point of use, independently
+	 * of which measurement or operation ran immediately beforehand. */
+	if (spectrum.field->Folded()) {
+		Folder unfold(spectrum.field);
+		unfold(UNFOLD_ALL);
+	}
+
 	if (mask != SPMASK_FLAT && mask != SPMASK_VIL && mask != SPMASK_VIL2) {
 		LogError("[2Dcyl spectrum] Requested mask is not implemented.");
 		return;

@@ -1060,8 +1060,7 @@ StringData stringKernelXeon2D(Scalar *field)
 	 * and correctness at the cylindrical boundaries matters much more than
 	 * vectorising this small two-dimensional scan.
 	 */
-	const bool wasFolded = field->Folded();
-	if (wasFolded) {
+	if (field->Folded()) {
 		Folder unfold(field);
 		unfold(UNFOLD_ALL);
 	}
@@ -1133,11 +1132,6 @@ StringData stringKernelXeon2D(Scalar *field)
 		scan(static_cast<std::complex<double> *>(field->mCpu()));
 	else
 		scan(static_cast<std::complex<float> *>(field->mCpu()));
-
-	if (wasFolded) {
-		Folder refold(field);
-		refold(FOLD_ALL);
-	}
 
 	StringData out{};
 	out.strDen = out.strDen_local = nStrings;
