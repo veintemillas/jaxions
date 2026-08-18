@@ -323,9 +323,9 @@ int	main (int argc, char *argv[])
 	double L = axion->BckGnd()->PhysSize();       // refined box restored by readConf on --restart
 	double delta = axion->BckGnd()->PhysSize()/ ((double) axion->TZ());
 	double radius_save = L;
-	refine     = true;                                // file-scope; default for a fresh run
-	amr_count  = 0;                                   // file-scope; number of AMR refinements done
 	int  amr_max   = myCosmos.ICData().maxamr;        // cap (-1 = unlimited), from --maxamr
+	refine     = (amr_max != 0);                      // --maxamr 0 means no refinement
+	amr_count  = 0;                                   // file-scope; number of AMR refinements done
 
 	/* On restart, recover the exact AMR bookkeeping (amr_count, refine) from the
 	   attributes we stored on the restart file in checkTime(). L/delta already
@@ -347,6 +347,14 @@ int	main (int argc, char *argv[])
 			H5Fclose(fid);
 		}
 	}
+
+	/* The command-line cap is authoritative even when a restart file says that
+	   refinement was still active.  This also makes --maxamr 0 a true no-AMR
+	   mode for both fresh and restarted simulations. */
+	if (amr_max >= 0 && amr_count >= amr_max)
+		refine = false;
+	if (amr_max == 0)
+		LogOut("AMR disabled (--maxamr 0)\n");
 
 
 	LogOut ("Start redshift loop (steps %lu)\n\n", myCosmos.ICData().nSteps);
