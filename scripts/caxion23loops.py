@@ -216,8 +216,9 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     # Build and run ICs-only step (creates the HDF5 skeleton)
     # in jaxions, we permute, fast axis is z, slow is rho
     # so x,z 
-    JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create, R=R_create, Ng=1, Np=Np,
-                                 gpu=False, verb=verb, dump=1, options=options)
+    JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create,
+                                 R=R_create, Ng=1, Np=Np, gpu=False,
+                                 verb=verb, dump=1, options='')
     create_jax(GRID + JAXI, Np=Np, omp=omp)
 
     if plota:
@@ -282,7 +283,8 @@ def namea(Nrho,Nz, msa, Ng, xtr):
 # jaxions command-line helpers  (MPI / OMP / GPU-aware)
 # ---------------------------------------------------------------------------
 
-def generic_jax(msa, Nx, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0, options='', nz=-1):
+def generic_jax(msa, Nx, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0,
+                options='', nz=-1):
     '''Build jaxions command strings.
 
     Returns (JAXI, GRID, N) where:
@@ -326,8 +328,20 @@ def run_jax(JAXI, Np=1, omp=1, r_file='run.sh', o_file='log-con.txt'):
 def create_jax(JAXI, Np=1, omp=1):
     '''Run jaxions with --steps 0 to create the HDF5 file skeleton.'''
     os.makedirs("out/m", exist_ok=True)
-    run_jax(JAXI + ' --steps 0 --p3D 1 ', Np=Np, omp=omp,
-            r_file='create.sh', o_file='log-create.txt')
+    # A production measfile may already exist in the working directory.  The
+    # creation run must not consume it or calculate its spectra; it only needs
+    # to write axion.00000 for Python to overwrite with the requested IC.
+    measfile = 'measfile.dat'
+    hidden_measfile = '.measfile.dat.create-hidden'
+    had_measfile = os.path.exists(measfile)
+    if had_measfile:
+        os.replace(measfile, hidden_measfile)
+    try:
+        run_jax(JAXI + ' --steps 0 --p3D 1 ', Np=Np, omp=omp,
+                r_file='create.sh', o_file='log-create.txt')
+    finally:
+        if had_measfile:
+            os.replace(hidden_measfile, measfile)
 
 
 def run_jax_direct(JAXI, Np=None, omp=None, launcher='srun', executable='caxion3d', log_file='log-con.txt', launcher_options=None):
@@ -441,7 +455,7 @@ def simu_slurm(R, msa, N, Ng=2, Np=None, omp=None, plota=False, rescale=1,
     # so x,z
     JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create,
                                  R=R_create, Ng=1, Np=Np, gpu=False,
-                                 verb=verb, dump=1, options=options)
+                                 verb=verb, dump=1, options='')
     create_jax_direct(GRID + JAXI, Np=Np, omp=omp, launcher=launcher,
                       executable=executable,
                       launcher_options=launcher_options)
@@ -530,7 +544,7 @@ def simu_slurm_streaming(R, msa, N, Ng=2, Np=None, omp=None, plota=False,
 
     JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create,
                                  R=R_create, Ng=1, Np=Np, gpu=False,
-                                 verb=verb, dump=1, options=options)
+                                 verb=verb, dump=1, options='')
     create_jax_direct(GRID + JAXI, Np=Np, omp=omp, launcher=launcher,
                       executable=executable,
                       launcher_options=launcher_options)
